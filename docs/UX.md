@@ -1,0 +1,1 @@
+Idle: no controls. Hover: delete, drag, resize. Create card by dragging.

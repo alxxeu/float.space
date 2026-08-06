@@ -1,0 +1,1 @@
+Floatspace is a dedicated thinking workspace, not another productivity app.

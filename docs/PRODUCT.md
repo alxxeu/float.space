@@ -1,0 +1,1 @@
+Desktop mode and Workspace mode. Up to 10 workspaces. Opt+0 temporary.

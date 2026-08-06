@@ -1,0 +1,46 @@
+:root {
+  color: #f2f2f2;
+  background: #161616;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; min-height: 100vh; }
+
+button, input, textarea { font: inherit; }
+
+.app-shell { min-height: 100vh; overflow: hidden;
+  background: radial-gradient(circle at 50% 35%, #292929 0%, #191919 52%, #111 100%);
+}
+
+.topbar { position: fixed; z-index: 5; top: 0; left: 0; padding: 28px 32px 48px; }
+.wordmark {
+  margin: 0;
+  color: rgb(255 255 255 / 48%);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+.workspace-menu { width: 208px; margin-top: 10px; padding: 6px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; background: rgb(38 38 38 / 92%); box-shadow: 0 12px 36px rgb(0 0 0 / 25%); backdrop-filter: blur(18px); }
+.workspace-menu button { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; border: 0; border-radius: 6px; color: rgb(255 255 255 / 65%); background: transparent; text-align: left; cursor: pointer; }
+.workspace-menu button:hover, .workspace-menu button.active { color: #fff; background: rgb(255 255 255 / 9%); }
+.workspace-menu span { width: 16px; color: rgb(255 255 255 / 34%); font-size: 11px; }
+.workspace-menu .new-space { margin-top: 4px; border-top: 1px solid rgb(255 255 255 / 8%); border-radius: 0; color: rgb(255 255 255 / 48%); }
+.canvas { position: relative; min-height: 100vh; touch-action: none; }
+.canvas-hint { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: rgb(255 255 255 / 24%); font-size: 14px; pointer-events: none; }
+.card { position: absolute; display: flex; min-width: 120px; min-height: 120px; border: 1px solid rgb(255 255 255 / 13%); border-radius: 12px; background: rgb(48 48 48 / 82%); box-shadow: 0 12px 30px rgb(0 0 0 / 14%); overflow: hidden; }
+.card-draft { opacity: 0.45; pointer-events: none; }
+.card textarea { width: 100%; height: 100%; resize: none; padding: 24px 18px 18px; border: 0; outline: 0; color: rgb(255 255 255 / 90%); background: transparent; line-height: 1.45; }
+.card-handle { position: absolute; top: 0; left: 0; right: 28px; height: 17px; cursor: grab; opacity: 0; }
+.card:hover .card-handle, .card:focus-within .card-handle { opacity: 1; }
+.card-handle:active { cursor: grabbing; }
+.delete-card { position: absolute; top: 5px; right: 6px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0; }
+.card:hover .delete-card, .card:focus-within .delete-card { opacity: 1; }
+.delete-card:hover { color: #fff; background: rgb(255 255 255 / 10%); }
+.resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; }
+.resize-handle::after { position: absolute; right: 5px; bottom: 5px; width: 5px; height: 5px; border-right: 1px solid rgb(255 255 255 / 42%); border-bottom: 1px solid rgb(255 255 255 / 42%); content: ""; }
+.card:hover .resize-handle, .card:focus-within .resize-handle { opacity: 1; }
