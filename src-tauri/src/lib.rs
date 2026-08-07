@@ -97,6 +97,10 @@ pub fn run() {
         eprintln!("Floatspace could not enter Desktop mode: {error}");
         return;
     }
+    
+    if let Err(error) = native_desktop::set_desktop_icons_visible(true) {
+    eprintln!("Floatspace could not show desktop icons: {error}");
+}
 
     if let Err(error) = app_handle.emit("switch-workspace", 0u8) {
         eprintln!("Floatspace could not switch to Desktop: {error}");
@@ -118,26 +122,49 @@ pub fn run() {
                 _ => return,
             };
 
-            let state = app_handle.state::<DesktopLayerState>();
+           let state = app_handle.state::<DesktopLayerState>();
 
-            let mode = match state.mode.lock() {
-                Ok(mut mode) => {
-                    *mode = native_desktop::Mode::Workspace;
-                    *mode
-                }
-                Err(_) => {
-                    eprintln!("Floatspace desktop layer state is unavailable");
-                    return;
-                }
-            };
+let needs_workspace_mode = match state.mode.lock() {
+    Ok(mut mode) => {
+        if *mode == native_desktop::Mode::Workspace {
+            false
+        } else {
+            *mode = native_desktop::Mode::Workspace;
+            true
+        }
+    }
+    Err(_) => {
+        eprintln!("Floatspace desktop layer state is unavailable");
+        return;
+    }
+};
 
-            if let Err(error) = native_desktop::apply_mode(&window, mode) {
-                eprintln!("Floatspace could not enter Workspace mode: {error}");
-                return;
-            }
+if needs_workspace_mode {
+    if let Err(error) = native_desktop::apply_mode(
+        &window,
+        native_desktop::Mode::Workspace,
+    ) {
+        eprintln!("Floatspace could not enter Workspace mode: {error}");
+        return;
+    }
+}
 
-            if let Err(error) = app_handle.emit("switch-workspace", slot) {
-                eprintln!("Floatspace could not switch workspace: {error}");
+if needs_workspace_mode {
+    if let Err(error) = native_desktop::apply_mode(
+        &window,
+        native_desktop::Mode::Workspace,
+    ) {
+        eprintln!("Floatspace could not enter Workspace mode: {error}");
+        return;
+    }
+
+    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
+        eprintln!("Floatspace could not hide desktop icons: {error}");
+    }
+}
+
+if let Err(error) = app_handle.emit("switch-workspace", slot) {
+    eprintln!("Floatspace could not switch workspace: {error}");
             }
         });
     })

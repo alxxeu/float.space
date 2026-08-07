@@ -1,7 +1,6 @@
 :root {
   color: #000000;
   background: rgb(38 38 38 / 20%);
-  backdrop-filter: blur(6px);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
