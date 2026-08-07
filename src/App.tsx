@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
+import { listen } from "@tauri-apps/api/event";
 import type { Card, Workspace } from "./domain";
 import { createCard, createWorkspace, deleteCard, loadCards, loadWorkspaces, updateCard } from "./native";
 
@@ -10,7 +11,7 @@ type DraftCard = Omit<Card, "id" | "workspaceId" | "text">;
 
 export function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>();
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
     const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
     const nextZIndex = useRef(1);
@@ -22,17 +23,70 @@ export function App() {
   const didDragToCreate = useRef(false);
   const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
 
-  useEffect(() => {
-    void loadWorkspaces().then((loaded) => {
-        setWorkspaces(loaded);
-        setActiveWorkspaceId(loaded[0]?.id);
-      });
-  }, []);
+    useEffect(() => {
+        void loadWorkspaces().then(async (loaded) => {
+            let spaces = [...loaded];
 
-  useEffect(() => {
-    if (!activeWorkspaceId) return;
-    void loadCards(activeWorkspaceId).then(setCards);
-  }, [activeWorkspaceId]);
+            for (let slot = 1; slot <= 8; slot++) {
+                if (!spaces.some((workspace) => workspace.slot === slot)) {
+                    const workspace = await createWorkspace(`Space ${slot}`);
+                    spaces.push(workspace);
+                }
+            }
+
+            spaces.sort((a, b) => a.slot - b.slot);
+
+            setWorkspaces(spaces);
+
+            // Start on Space 1
+            setActiveWorkspaceId(
+                spaces.find((workspace) => workspace.slot === 1)?.id
+            );
+        });
+    }, []);
+    
+    useEffect(() => {
+        let unlisten: (() => void) | undefined;
+
+        void listen<number>("switch-workspace", (event) => {
+            const slot = event.payload;
+
+            // ⌥1 = normal macOS Desktop
+            if (slot === 0) {
+                setActiveWorkspaceId(null);
+                setCards([]);
+                return;
+            }
+
+            // ⌥2–⌥9 = Floatspace Spaces 1–8
+            setWorkspaces((current) => {
+                const workspace = current.find(
+                    (item) => item.slot === slot
+                );
+
+                if (workspace) {
+                    setActiveWorkspaceId(workspace.id);
+                }
+
+                return current;
+            });
+        }).then((cleanup) => {
+            unlisten = cleanup;
+        });
+
+        return () => {
+            unlisten?.();
+        };
+    }, []);
+    
+    useEffect(() => {
+        if (!activeWorkspaceId) {
+            setCards([]);
+            return;
+        }
+
+        void loadCards(activeWorkspaceId).then(setCards);
+    }, [activeWorkspaceId]);
 
   useEffect(() => () => {
     for (const timer of saveTimers.current.values()) clearTimeout(timer);

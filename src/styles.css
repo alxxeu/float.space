@@ -1,6 +1,7 @@
 :root {
   color: #000000;
   background: rgb(38 38 38 / 20%);
+  backdrop-filter: blur(6px);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -62,9 +63,9 @@ button, input, textarea { font: inherit; }
         0 12px 40px rgb(0 0 0 / 16%);
 }
 .card-handle:active { cursor: grabbing; }
-.delete-card { position: absolute; top: 5px; right: 6px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0; }
+.delete-card { position: absolute; top: 5px; left: 5px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 10px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0; }
 .card:hover .delete-card, .card:focus-within .delete-card { opacity: 1; }
 .delete-card:hover { color: #fff; background: rgb(255 255 255 / 10%); }
 .resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; }
-.resize-handle::after { position: absolute; right: 5px; bottom: 5px; width: 5px; height: 5px; border-right: 1px solid rgb(255 255 255 / 42%); border-bottom: 1px solid rgb(255 255 255 / 42%); content: ""; }
+.resize-handle::after { position: absolute; right: 5px; bottom: 5px; width: 9px; height: 10px; border-right: 2px solid rgb(255 255 255 / 42%); border-bottom: 2px solid rgb(255 255 255 / 42%); border-radius: 0 0 10px 0; content: ""; }
 .card:hover .resize-handle, .card:focus-within .resize-handle { opacity: 1; }

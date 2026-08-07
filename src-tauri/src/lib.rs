@@ -4,7 +4,7 @@ mod storage;
 use std::sync::Mutex;
 
 use storage::{Card, Database, NewCard, Workspace};
-use tauri::{Manager, State};
+use tauri::{Emitter, Manager, State};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 
 struct AppState {
@@ -51,41 +51,97 @@ fn delete_card(id: String, state: State<'_, AppState>) -> Result<(), String> {
 }
 
 pub fn run() {
-    let workspace_shortcut = Shortcut::new(Some(Modifiers::ALT), Code::Digit0);
-    let shortcut_to_handle = workspace_shortcut.clone();
-    let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
-        .with_shortcut(workspace_shortcut)
-        .expect("Option+0 must be a valid global shortcut")
-        .with_handler(move |app, shortcut, event| {
-            if shortcut != &shortcut_to_handle || event.state() != ShortcutState::Pressed {
-                return;
-            }
+   let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
+    .with_shortcuts([
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit1),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit2),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit3),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit4),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit5),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit6),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit7),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit8),
+        Shortcut::new(Some(Modifiers::ALT), Code::Digit9),
+    ])
+    .expect("Floatspace shortcuts must be valid")
+    .with_handler(move |app, shortcut, event| {
+        if event.state() != ShortcutState::Pressed {
+            return;
+        }
 
-            let app_handle = app.clone();
-            let _ = app.run_on_main_thread(move || {
-               let mode = {
+        let app_handle = app.clone();
+        let shortcut = shortcut.clone();
+
+        let _ = app.run_on_main_thread(move || {
+            let Some(window) = app_handle.get_webview_window("main") else {
+                eprintln!("Floatspace main window is unavailable");
+                return;
+            };
+
+            // ⌥1 = normal macOS Desktop
+         if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
     let state = app_handle.state::<DesktopLayerState>();
 
-    let result = match state.mode.lock() {
-        Ok(mut mode) => mode.toggle(),
+    let mode = match state.mode.lock() {
+        Ok(mut mode) => {
+            *mode = native_desktop::Mode::Desktop;
+            *mode
+        }
         Err(_) => {
             eprintln!("Floatspace desktop layer state is unavailable");
             return;
         }
     };
 
-    result
-};
-                let Some(window) = app_handle.get_webview_window("main") else {
-                    eprintln!("Floatspace main window is unavailable");
-                    return;
-                };
-                if let Err(error) = native_desktop::apply_mode(&window, mode) {
-                    eprintln!("Floatspace could not change desktop layer mode: {error}");
+    if let Err(error) = native_desktop::apply_mode(&window, mode) {
+        eprintln!("Floatspace could not enter Desktop mode: {error}");
+        return;
+    }
+
+    if let Err(error) = app_handle.emit("switch-workspace", 0u8) {
+        eprintln!("Floatspace could not switch to Desktop: {error}");
+    }
+
+    return;
+}
+
+            // ⌥2–⌥9 = Floatspace spaces
+            let slot = match shortcut {
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 1,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 2,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 3,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 4,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 5,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 6,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 7,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 8,
+                _ => return,
+            };
+
+            let state = app_handle.state::<DesktopLayerState>();
+
+            let mode = match state.mode.lock() {
+                Ok(mut mode) => {
+                    *mode = native_desktop::Mode::Workspace;
+                    *mode
                 }
-            });
-        })
-        .build();
+                Err(_) => {
+                    eprintln!("Floatspace desktop layer state is unavailable");
+                    return;
+                }
+            };
+
+            if let Err(error) = native_desktop::apply_mode(&window, mode) {
+                eprintln!("Floatspace could not enter Workspace mode: {error}");
+                return;
+            }
+
+            if let Err(error) = app_handle.emit("switch-workspace", slot) {
+                eprintln!("Floatspace could not switch workspace: {error}");
+            }
+        });
+    })
+    .build();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
