@@ -107,7 +107,6 @@ export function App() {
   return (
     <main className="app-shell" aria-label="Floatspace">
       <header className="topbar" onPointerEnter={() => setMenuOpen(true)} onPointerLeave={() => setMenuOpen(false)}>
-        <p className="wordmark">Floatspace</p>
         <AnimatePresence>
           {isMenuOpen && activeWorkspace && (
             <motion.div className="workspace-menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
@@ -133,7 +132,6 @@ export function App() {
           void deleteCard(id);
         }} />)}
         {draft && <div className="card card-draft" style={cardStyle(draft)} />}
-        {cards.length === 0 && !draft && <p className="canvas-hint">Drag anywhere to make space for a thought.</p>}
       </section>
     </main>
   );

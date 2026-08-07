@@ -75,7 +75,7 @@ impl Database {
         let mut statement = self.connection.prepare(
             "SELECT id, name, slot FROM workspaces ORDER BY slot ASC",
         )?;
-        statement
+        let workspaces = statement
             .query_map([], |row| {
                 Ok(Workspace {
                     id: row.get(0)?,
@@ -83,7 +83,9 @@ impl Database {
                     slot: row.get(2)?,
                 })
             })?
-            .collect()
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(workspaces)
     }
 
     pub fn create_workspace(&self, name: String) -> rusqlite::Result<Workspace> {
@@ -96,7 +98,11 @@ impl Database {
 
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
         let mut statement = self.connection.prepare("SELECT id, workspace_id, text, x, y, width, height FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC")?;
-        statement.query_map([workspace_id], Self::card_from_row)?.collect()
+        let cards = statement
+            .query_map([workspace_id], Self::card_from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(cards)
     }
 
     pub fn create_card(&self, new_card: NewCard) -> rusqlite::Result<Card> {
