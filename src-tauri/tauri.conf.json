@@ -10,6 +10,8 @@
     "frontendDist": "../dist"
   },
   "app": {
+      "macOSPrivateApi": true,
+      
     "windows": [
       {
         "title": "Floatspace",
@@ -26,3 +28,4 @@
   },
   "bundle": { "active": true, "targets": "all" }
 }
+

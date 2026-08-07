@@ -12,6 +12,8 @@ export function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>();
   const [cards, setCards] = useState<Card[]>([]);
+    const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
+    const nextZIndex = useRef(1);
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [draft, setDraft] = useState<DraftCard>();
   const canvasRef = useRef<HTMLElement>(null);
@@ -127,7 +129,20 @@ export function App() {
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerUp}
       >
-        {cards.map((card) => <CardView key={card.id} card={card} onChange={changeCard} onDelete={(id) => {
+        {cards.map((card) => <CardView
+                   key={card.id}
+                   card={card}
+                   onChange={changeCard}
+                   onActivate={() => {
+                     const zIndex = nextZIndex.current++;
+
+                     setCardZIndexes((current) => ({
+                       ...current,
+                       [card.id]: zIndex,
+                     }));
+                   }}
+                   zIndex={cardZIndexes[card.id] ?? 0}
+                   onDelete={(id) => {
           setCards((current) => current.filter((item) => item.id !== id));
           void deleteCard(id);
         }} />)}
@@ -141,7 +156,19 @@ function cardStyle(card: Pick<Card, "x" | "y" | "width" | "height">) {
   return { left: card.x, top: card.y, width: card.width, height: card.height };
 }
 
-function CardView({ card, onChange, onDelete }: { card: Card; onChange: (card: Card, immediately?: boolean) => void; onDelete: (id: string) => void }) {
+function CardView({
+  card,
+  onChange,
+  onDelete,
+  onActivate,
+  zIndex
+}: {
+  card: Card;
+  onChange: (card: Card, immediately?: boolean) => void;
+  onDelete: (id: string) => void;
+  onActivate: () => void;
+  zIndex: number;
+}) {
   const start = useRef<{ x: number; y: number; card: Card; latest: Card; mode: "move" | "resize" }>();
 
   function begin(event: React.PointerEvent, mode: "move" | "resize") {
@@ -175,7 +202,18 @@ function CardView({ card, onChange, onDelete }: { card: Card; onChange: (card: C
   }
 
   return (
-    <article className="card" style={cardStyle(card)} onPointerDown={(event) => event.stopPropagation()}>
+          <article
+              className="card"
+          style={{
+            ...cardStyle(card),
+            zIndex,
+          }}
+              onPointerDown={(event) => {
+                  event.stopPropagation();
+                  onActivate();
+              }}
+          >
+          <div className="card-background" />
       <div className="card-handle" aria-label="Move card" onPointerDown={(event) => begin(event, "move")} onPointerMove={move} onPointerUp={finish} />
       <textarea aria-label="Card text" value={card.text} placeholder="" onChange={(event) => onChange({ ...card, text: event.target.value })} />
       <button className="delete-card" aria-label="Delete card" onClick={() => onDelete(card.id)}>×</button>
