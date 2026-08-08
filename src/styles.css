@@ -1,6 +1,6 @@
 :root {
   color: #000000;
-  background: rgb(38 38 38 / 20%);
+  background: rgb(38 38 38 / 0%);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -10,13 +10,13 @@
     box-sizing: border-box;
   }
 
-html, body, #root { width: 100%; min-width: 320px; min-height: 100%; margin: 0; background: transparent; }
+html, body, #root { width: 100%;   height: 100%; min-width: 320px; min-height: 100%; margin: 0;   overflow: hidden; background: transparent; }
 
 button, input, textarea { font: inherit; }
 
 .app-shell { min-height: 100vh; overflow: hidden; background: transparent; }
 
-.topbar { position: fixed; z-index: 5; top: 0; left: 0; width: 64px; height: 64px; }
+.topbar { position: fixed; z-index: 5; top: 0; left: 0; width: 64px; height: 100%; }
 
 .workspace-menu { width: 208px; margin-top: 10px; padding: 6px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; background: rgb(38 38 38 / 92%); box-shadow: 0 12px 36px rgb(0 0 0 / 25%); backdrop-filter: blur(18px); }
 .workspace-menu button { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; border: 0; border-radius: 6px; color: rgb(255 255 255 / 65%); background: transparent; text-align: left; cursor: pointer; }
@@ -24,6 +24,7 @@ button, input, textarea { font: inherit; }
 .workspace-menu span { width: 16px; color: rgb(255 255 255 / 34%); font-size: 11px; }
 .workspace-menu .new-space { margin-top: 4px; border-top: 1px solid rgb(255 255 255 / 8%); border-radius: 0; color: rgb(255 255 255 / 48%); }
 .canvas { position: relative; min-height: 100vh; touch-action: none; }
+
 .card {
   position: absolute;
   display: flex;
@@ -32,17 +33,44 @@ button, input, textarea { font: inherit; }
   border: 1px solid rgb(255 255 255 / 6%);
   border-radius: 16px;
   background: rgb(255 255 255 / 8%);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  isolation: isolate;
   box-shadow: 0 8px 32px rgb(0 0 0 / 12%);
-  backdrop-filter: blur(18px);
   overflow: hidden;
-  transition: border-color 180ms ease, box-shadow 180ms ease;
+  transition:
+  background 400ms ease,
+  border-color 400ms ease,
+  box-shadow 400ms ease,
+
 }
+
+.card:hover,
+.card.card-focused {
+  backdrop-filter: blur(22px);
+  -webkit-backdrop-filter: blur(22px);
+}
+
+.card-background {
+  position: absolute;
+  inset: 0;
+
+  background: rgb(255 255 255 / 6%);
+  opacity: 0;
+
+  pointer-events: none;
+
+  transition: opacity 500ms ease;
+}
+
+
 .card-draft { opacity: 0.45; pointer-events: none; }
+
 .card textarea {
     width: 100%;
     height: 100%;
     resize: none;
-    padding: 24px 20px 20px;
+    padding: 20px 20px 20px;
 
     border: 0;
     outline: 0;
@@ -55,23 +83,70 @@ button, input, textarea { font: inherit; }
 
     caret-color: rgb(255 255 255 / 80%);
 }
+
+.resize-handle {
+  z-index: 3;
+}
+
 .card-handle { position: absolute; top: 0; left: 0; right: 28px; height: 17px; cursor: grab; opacity: 0; }
+
 .card:hover {
     border-color: rgb(255 255 255 / 18%);
     box-shadow:
         0 12px 40px rgb(0 0 0 / 16%);
 }
 .card-handle:active { cursor: grabbing; }
-.delete-card { position: absolute; top: 5px; left: 5px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 10px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0;
+
+.card:hover .card-background {
+  opacity: 1;
+}
+
+.delete-card { position: absolute; top: 5px; left: 5px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 10px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0;   z-index: 4;
     
     /* Новые свойства для выравнивания и толщины крестика */
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 16px;       /* Меняйте этот параметр для размера крестика */
-    font-weight: medium;     /* Делает линии крестика толще */
-    line-height: 1;
-  }
+    width: 20px;
+      height: 20px;
+      padding: 0;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+.delete-progress {
+    fill: none;
+  display: block;
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.delete-progress-fill {
+    fill: none;
+    stroke-width: 1.5;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-linecap: round;
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.delete-progress-fill.active {
+  opacity: 1;
+}
+
+.delete-card:active .delete-card-icon {
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(0.9);
+}
+    .delete-card svg {
+      display: block;
+    }
 .card:hover .delete-card, .card:focus-within .delete-card { opacity: 1; }
 .delete-card:hover { color: #fff; background: rgb(255 255 255 / 10%); }
 .resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; }
@@ -88,15 +163,6 @@ button, input, textarea { font: inherit; }
   color: #fff;
 }
 
-.empty-space-slot {
-  margin-bottom: 12px;
-  font-size: 14px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  opacity: 0.4;
-  position: relative;
-}
-
 .empty-space-title {
   font-size: 22px;
   font-weight: 500;
@@ -109,60 +175,73 @@ button, input, textarea { font: inherit; }
   opacity: 0.4;
 }
 
+.empty-space-name-input {
+  box-sizing: border-box;
+
+  width: auto;
+  min-width: 40px;
+  max-width: 300px;
+
+  margin-bottom: 12px;
+  padding: 2px 6px;
+
+  border: none;
+  border-radius: 3px;
+  outline: none;
+
+  background: rgba(255, 255, 255, 0.08);
+
+  color: #fff;
+  opacity: 0.4;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-align: center;
+
+  caret-color: #fff;
+}
+
 .empty-space-name-row {
   display: flex;
-  align-items: center;
   justify-content: center;
-  gap: 10px;
+  align-items: center;
 }
 
-.empty-space-name-input {
-  background: transparent;
-  border: none;
-  outline: none;
+.empty-space-slot {
+  display: inline-block;
   margin-bottom: 12px;
-  font-size: 14px;
+  padding: 2px 6px;
+
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+
   color: #fff;
-  font-weight: 800;
-  letter-spacing: 0.06em;
   opacity: 0.4;
+
+  cursor: text;
+  border-radius: 3px;
+  transition: background 0.15s ease;
+}
+
+.empty-space-slot:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.floatspace-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.canvas,
+.topbar {
   position: relative;
-  font: inherit;
-  text-align: center;
-  width: 180px;
-  padding: 0;
+  z-index: 2;
 }
-
-.empty-space-edit {
-  display: block;
-  border: none;
-  background: transparent;
-  color: white;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 2px 4px;
-  pointer-events: auto;
-  position: relative;
-  z-index: 10;
-}
-
-.empty-space-name-row:hover .empty-space-edit {
-  opacity: 0.5;
-}
-
-.empty-space-edit:hover {
-  opacity: 1;
-}
-.empty-space-edit {
-  size: 16px;
-  width: 1px;
-  color: white;
-  opacity: 0;
-}
-.empty-space-name-row:hover .empty-space-edit {
-    opacity: 0.5;
-  }
-
-  .empty-space-edit:hover {
-    opacity: 1;
-  }

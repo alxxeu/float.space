@@ -13,6 +13,8 @@ export function App() {
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
+    const [focusCardId, setFocusCardId] = useState<string | null>(null);
+    const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
     const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
     const nextZIndex = useRef(1);
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -23,6 +25,8 @@ export function App() {
       ({ id }) => id === activeWorkspaceId
     );
 
+    
+    
     const startEditingWorkspaceName = () => {
       if (!activeWorkspace) return;
 
@@ -52,6 +56,7 @@ export function App() {
 
       setIsEditingWorkspaceName(false);
     };
+    const [isFloatspaceLayer, setIsFloatspaceLayer] = useState(false);
     
   const canvasRef = useRef<HTMLElement>(null);
   const creationStart = useRef<{ x: number; y: number }>();
@@ -74,9 +79,7 @@ export function App() {
 
             setWorkspaces(spaces);
 
-            // Start on Space 1
-            
-        (
+            setActiveWorkspaceId(
               spaces.find((workspace) => workspace.slot === 1)?.id ?? null
             );
         });
@@ -90,11 +93,14 @@ export function App() {
 
             // ⌥1 = normal macOS Desktop
             if (slot === 0) {
+                setIsFloatspaceLayer(false);
                 setActiveWorkspaceId(null);
                 setCards([]);
                 return;
             }
 
+            setIsFloatspaceLayer(true);
+            
             // ⌥2–⌥9 = Floatspace Spaces 1–8
             setWorkspaces((current) => {
                 const workspace = current.find(
@@ -152,6 +158,7 @@ export function App() {
 
   function handleCanvasPointerDown(event: React.PointerEvent<HTMLElement>) {
     if (!activeWorkspaceId || event.target !== event.currentTarget) return;
+    setFocusedCardId(null);
     const point = pointInCanvas(event);
     creationStart.current = point;
     didDragToCreate.current = false;
@@ -184,7 +191,16 @@ export function App() {
     event.currentTarget.releasePointerCapture(event.pointerId);
     if (!pending || !didDragToCreate.current || !activeWorkspaceId) return;
     const card: Omit<Card, "id"> = { workspaceId: activeWorkspaceId, text: "", ...pending };
-    void createCard(card).then((created) => setCards((current) => [...current, created]));
+      void createCard(card).then((created) => {
+        const zIndex = nextZIndex.current++;
+
+        setCardZIndexes((current) => ({
+          ...current,
+          [created.id]: zIndex,
+        }));
+          setFocusCardId(created.id);
+        setCards((current) => [...current, created]);
+      });
   }
 
   async function addWorkspace() {
@@ -234,6 +250,17 @@ export function App() {
           )}
         </AnimatePresence>
       </header>
+          <AnimatePresence>
+            {isFloatspaceLayer && (
+              <motion.div
+                className="floatspace-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+              />
+            )}
+          </AnimatePresence>
       <section
         className="canvas"
         ref={canvasRef}
@@ -248,72 +275,39 @@ export function App() {
               animate={{ opacity: 1 }}
               transition={{ duration: 0.25 }}
             >
-              <div
-                className="empty-space-name-row"
-                onPointerDown={(event) => event.stopPropagation()}
-              >
-                {isEditingWorkspaceName ? (
-                  <input
-                    className="empty-space-name-input"
-                    value={workspaceNameDraft}
-                                           autoFocus
-                                           onFocus={(event) => event.currentTarget.select()}
-                                           onChange={(event) => setWorkspaceNameDraft(event.target.value)}
-                    onBlur={() => void saveWorkspaceName()}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        void saveWorkspaceName();
-                      }
+                                                     <div
+                                                       className="empty-space-name-row"
+                                                       onPointerDown={(event) => event.stopPropagation()}
+                                                     >
+                                                       {isEditingWorkspaceName ? (
+                                                         <input
+                                                           className="empty-space-name-input"
+                                                           value={workspaceNameDraft}
+                                                           autoFocus
+                                                           onFocus={(event) => event.currentTarget.select()}
+                                                           onChange={(event) => setWorkspaceNameDraft(event.target.value)}
+                                                           onBlur={() => void saveWorkspaceName()}
+                                                           onKeyDown={(event) => {
+                                                             if (event.key === "Enter") {
+                                                               event.preventDefault();
+                                                               void saveWorkspaceName();
+                                                             }
 
-                      if (event.key === "Escape") {
-                        setIsEditingWorkspaceName(false);
-                      }
-                    }}
-                  />
-                ) : (
-                  <>
-                     <div className="empty-space-slot">
-                       {(activeWorkspace.name || `SPACE ${activeWorkspace.slot}`).toUpperCase()}
-                     </div>
-
-                     <button
-                       type="button"
-                       className="empty-space-edit"
-                       onPointerDown={(event) => {
-                         event.stopPropagation();
-                       }}
-                       onClick={(event) => {
-                         event.stopPropagation();
-                         startEditingWorkspaceName();
-                       }}
-                     >
-                     <svg
-                       width="14"
-                       height="14"
-                       viewBox="0 0 24 24"
-                       fill="none"
-                       xmlns="http://www.w3.org/2000/svg"
-                       aria-hidden="true"
-                     >
-                       <path
-                         d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L4 17v3Z"
-                         stroke="currentColor"
-                         strokeWidth="1.8"
-                         strokeLinecap="round"
-                         strokeLinejoin="round"
-                       />
-                       <path
-                         d="m14.5 7.5 2 2"
-                         stroke="currentColor"
-                         strokeWidth="1.8"
-                         strokeLinecap="round"
-                       />
-                     </svg>
-                     </button>
-                  </>
-                )}
-              </div>
+                                                             if (event.key === "Escape") {
+                                                               event.preventDefault();
+                                                               setIsEditingWorkspaceName(false);
+                                                             }
+                                                           }}
+                                                         />
+                                                       ) : (
+                                                         <div
+                                                           className="empty-space-slot"
+                                                           onClick={startEditingWorkspaceName}
+                                                         >
+                                                           {activeWorkspace.name || `SPACE ${activeWorkspace.slot}`}
+                                                         </div>
+                                                       )}
+                                                     </div>
 
               <div className="empty-space-title">
                 This is your thinking space.
@@ -325,23 +319,50 @@ export function App() {
             </motion.div>
           )}
           
-        {cards.map((card) => <CardView
-                   key={card.id}
-                   card={card}
-                   onChange={changeCard}
-                   onActivate={() => {
-                     const zIndex = nextZIndex.current++;
+          <AnimatePresence>
+            {cards.map((card) => (
+              <motion.div
+                key={card.id}
+                initial={{ opacity: 1, scale: 1 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.8,
+                  transition: {
+                    duration: 0.2,
+                    ease: "easeOut",
+                  },
+                }}
+              >
+                <CardView
+                  card={card}
+                autoFocus={card.id === focusCardId}
+                                  focusedCardId={focusedCardId}
+                                  setFocusedCardId={setFocusedCardId}
+                  onChange={changeCard}
+                  onActivate={() => {
+                      
+                    const zIndex = nextZIndex.current++;
 
-                     setCardZIndexes((current) => ({
-                       ...current,
-                       [card.id]: zIndex,
-                     }));
-                   }}
-                   zIndex={cardZIndexes[card.id] ?? 0}
-                   onDelete={(id) => {
-          setCards((current) => current.filter((item) => item.id !== id));
-          void deleteCard(id);
-        }} />)}
+                    setCardZIndexes((current) => ({
+                      ...current,
+                      [card.id]: zIndex,
+                    }));
+                  }}
+                  zIndex={cardZIndexes[card.id] ?? 0}
+                  onDelete={(id) => {
+                    setCards((current) =>
+                      current.filter((item) => item.id !== id)
+                    );
+                      if (focusedCardId === id) {
+                           setFocusedCardId(null);
+                         }
+                    void deleteCard(id);
+                  }}
+                />
+              </motion.div>
+            ))}
+          </AnimatePresence>
         {draft && <div className="card card-draft" style={cardStyle(draft)} />}
       </section>
     </main>
@@ -354,32 +375,117 @@ function cardStyle(card: Pick<Card, "x" | "y" | "width" | "height">) {
 
 function CardView({
   card,
+    autoFocus,
+    focusedCardId,
+    setFocusedCardId,
   onChange,
   onDelete,
   onActivate,
   zIndex
 }: {
   card: Card;
+  autoFocus: boolean;
+    focusedCardId: string | null;
+    setFocusedCardId: (id: string | null) => void;
   onChange: (card: Card, immediately?: boolean) => void;
   onDelete: (id: string) => void;
   onActivate: () => void;
   zIndex: number;
 }) {
-  const start = useRef<{ x: number; y: number; card: Card; latest: Card; mode: "move" | "resize" }>();
+    const start = useRef<{
+      x: number;
+      y: number;
+      card: Card;
+      latest: Card;
+      mode: "move" | "resize";
+    }>();
 
+    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const [isActive, setIsActive] = useState(false);
+    
+    const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [deleteProgress, setDeleteProgress] = useState(0);
+    const deleteStart = useRef<number | null>(null);
+    const deleteAnimation = useRef<number | null>(null);
+    const DELETE_HOLD_TIME = 400;
+    
   function begin(event: React.PointerEvent, mode: "move" | "resize") {
     event.stopPropagation();
+      onActivate();
     start.current = { x: event.clientX, y: event.clientY, card, latest: card, mode };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
 
-  function move(event: React.PointerEvent) {
-    const operation = start.current;
-    if (!operation) return;
+    // удаление карточки
+    
+    function startDelete(event: React.PointerEvent) {
+      event.stopPropagation();
+        
+        setIsDeleting(true);
+        
+      if (deleteTimer.current) {
+        clearTimeout(deleteTimer.current);
+      }
+
+      deleteStart.current = performance.now();
+
+      const animate = (now: number) => {
+        if (deleteStart.current === null) return;
+
+        const progress = Math.min(
+          (now - deleteStart.current) / DELETE_HOLD_TIME,
+          1
+        );
+
+        setDeleteProgress(progress);
+
+        if (progress < 1) {
+          deleteAnimation.current = requestAnimationFrame(animate);
+        }
+      };
+
+      deleteAnimation.current = requestAnimationFrame(animate);
+
+      deleteTimer.current = setTimeout(() => {
+        deleteTimer.current = null;
+        deleteAnimation.current = null;
+        deleteStart.current = null;
+        setDeleteProgress(0);
+
+        onDelete(card.id);
+      }, DELETE_HOLD_TIME);
+    }
+    function cancelDelete(event?: React.PointerEvent) {
+      event?.stopPropagation();
+
+      if (deleteTimer.current) {
+        clearTimeout(deleteTimer.current);
+        deleteTimer.current = null;
+      }
+
+      if (deleteAnimation.current) {
+        cancelAnimationFrame(deleteAnimation.current);
+        deleteAnimation.current = null;
+      }
+
+      deleteStart.current = null;
+      setDeleteProgress(0);
+        setIsDeleting(false);
+    }
+    
+    //
+    
+    function move(event: React.PointerEvent) {
+      event.stopPropagation();
+
+      const operation = start.current;
+      if (!operation) return;
+        
     const dx = event.clientX - operation.x;
     const dy = event.clientY - operation.y;
     const canvas = event.currentTarget.closest(".canvas")?.getBoundingClientRect();
-      const topBoundary = 64;
+      const topBoundary = 38;
     const maxX = Math.max(0, (canvas?.width ?? Infinity) - operation.card.width);
     const maxY = Math.max(0, (canvas?.height ?? Infinity) - operation.card.height);
     const next = operation.mode === "move"
@@ -393,28 +499,123 @@ function CardView({
     onChange(next);
   }
 
-  function finish(event: React.PointerEvent) {
-    if (start.current) onChange(start.current.latest, true);
-    start.current = undefined;
-  }
+    function finish(event: React.PointerEvent) {
+      const operation = start.current;
+      if (!operation) return;
 
-  return (
-          <article
-              className="card"
-          style={{
-            ...cardStyle(card),
-            zIndex,
-          }}
-              onPointerDown={(event) => {
-                  event.stopPropagation();
-                  onActivate();
+      onChange(operation.latest, true);
+
+      start.current = undefined;
+
+      if (operation.mode === "resize") {
+        requestAnimationFrame(() => {
+          textareaRef.current?.focus();
+        });
+      }
+    }
+    
+          return (
+            <motion.article
+                  className={`card ${focusedCardId === card.id ? "card-focused" : ""}`}
+              style={{
+                ...cardStyle(card),
+                zIndex,
               }}
+              initial={{ opacity: 1, scale: 1 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{
+                opacity: 0,
+                scale: 0.92,
+                transition: {
+                  duration: 0.2,
+                  ease: "easeOut",
+                },
+              }}
+                  onPointerEnter={() => {
+                    // Только hover не меняет permanent focus.
+                  }}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    onActivate();
+                    setFocusedCardId(card.id);
+                  }}
           >
           <div className="card-background" />
       <div className="card-handle" aria-label="Move card" onPointerDown={(event) => begin(event, "move")} onPointerMove={move} onPointerUp={finish} />
-      <textarea aria-label="Card text" value={card.text} placeholder="" onChange={(event) => onChange({ ...card, text: event.target.value })} />
-      <button className="delete-card" aria-label="Delete card" onClick={() => onDelete(card.id)}>×</button>
-      <div className="resize-handle" aria-label="Resize card" onPointerDown={(event) => begin(event, "resize")} onPointerMove={move} onPointerUp={finish} />
-    </article>
-  );
+                  
+                  <textarea
+                    ref={textareaRef}
+                  autoFocus={autoFocus}
+                    aria-label="Card text"
+                    value={card.text}
+                  placeholder={isActive && !card.text ? "Write something..." : ""}
+                  onFocus={() => setIsActive(true)}
+                  onBlur={() => setIsActive(false)}
+                    onChange={(event) =>
+                      onChange({ ...card, text: event.target.value })
+                    }
+                  />
+                  
+                  <div className="resize-handle"
+                  aria-label="Resize card"
+                  onPointerDown={(event) => begin(event, "resize")}
+                  onPointerMove={move}
+                  onPointerUp={finish}
+                  onPointerCancel={finish}
+                  />
+                  
+                  <button
+                    className="delete-card"
+                    aria-label="Hold to delete card"
+                    onPointerDown={startDelete}
+                    onPointerUp={cancelDelete}
+                    onPointerCancel={cancelDelete}
+                    onPointerLeave={cancelDelete}
+                  >
+                    <svg
+                      className="delete-progress"
+                      width="20"
+                      height="20"
+                      viewBox="0 0 20 20"
+                      aria-hidden="true"
+                    >
+                      <circle
+                        className="delete-progress-track"
+                        cx="10"
+                        cy="10"
+                        r="8"
+                      />
+
+                      <circle
+                  className={`delete-progress-fill ${isDeleting ? "active" : ""}`}
+                        cx="10"
+                        cy="10"
+                        r="8"
+                  style={{
+                        strokeDashoffset: 44 - 44 * deleteProgress,
+                      }}
+                    />
+                  <path
+                       className="delete-cross"
+                       d="M6 6L12 12M12 6L6 12"
+                     />
+                    </svg>
+
+                    <svg
+                      className="delete-icon"
+                      width="11"
+                      height="11"
+                      viewBox="0 0 14 14"
+                      aria-hidden="true"
+                    >
+                      <path
+                        d="M3 3L11 11M11 3L3 11"
+                        stroke="currentColor"
+                        strokeWidth="2.3"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+    </motion.article>
+    );
 }
