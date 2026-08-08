@@ -50,6 +50,20 @@ fn delete_card(id: String, state: State<'_, AppState>) -> Result<(), String> {
     state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.delete_card(id).map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn update_workspace(
+    id: String,
+    name: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .update_workspace(id, name)
+        .map_err(|error| error.to_string())
+}
+
 pub fn run() {
    let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
     .with_shortcuts([
@@ -147,15 +161,9 @@ if needs_workspace_mode {
         eprintln!("Floatspace could not enter Workspace mode: {error}");
         return;
     }
-}
 
-if needs_workspace_mode {
-    if let Err(error) = native_desktop::apply_mode(
-        &window,
-        native_desktop::Mode::Workspace,
-    ) {
-        eprintln!("Floatspace could not enter Workspace mode: {error}");
-        return;
+    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
+        eprintln!("Floatspace could not hide desktop icons: {error}");
     }
 
     if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
@@ -190,7 +198,7 @@ if let Err(error) = app_handle.emit("switch-workspace", slot) {
             window.show()?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_workspaces, create_workspace, list_cards, create_card, update_card, delete_card])
+        .invoke_handler(tauri::generate_handler![list_workspaces, create_workspace,    update_workspace, list_cards, create_card, update_card, delete_card])
         .run(tauri::generate_context!())
         .expect("error while running Floatspace");
 }

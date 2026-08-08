@@ -96,6 +96,16 @@ impl Database {
         Ok(workspace)
     }
 
+pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()> {
+    self.connection.execute(
+        "UPDATE workspaces
+         SET name = ?1, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?2",
+        params![name, id],
+    )?;
+
+    Ok(())
+}
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
         let mut statement = self.connection.prepare("SELECT id, workspace_id, text, x, y, width, height FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC")?;
         let cards = statement

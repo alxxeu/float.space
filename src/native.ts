@@ -24,3 +24,11 @@ export async function updateCard(card: Card): Promise<void> {
 export async function deleteCard(id: string): Promise<void> {
   return invoke("delete_card", { id });
 }
+
+export async function updateWorkspace(
+  id: string,
+  name: string
+): Promise<void> {
+  return invoke("update_workspace", { id, name });
+}
+

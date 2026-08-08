@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { Card, Workspace } from "./domain";
-import { createCard, createWorkspace, deleteCard, loadCards, loadWorkspaces, updateCard } from "./native";
+import { createCard, createWorkspace, deleteCard, loadCards, loadWorkspaces, updateCard, updateWorkspace } from "./native";
 
 const MIN_CARD_SIZE = 120;
 const DEFAULT_CARD = { width: 260, height: 160 };
@@ -17,6 +17,42 @@ export function App() {
     const nextZIndex = useRef(1);
   const [isMenuOpen, setMenuOpen] = useState(false);
   const [draft, setDraft] = useState<DraftCard>();
+    const [isEditingWorkspaceName, setIsEditingWorkspaceName] = useState(false);
+    const [workspaceNameDraft, setWorkspaceNameDraft] = useState("");
+    const activeWorkspace = workspaces.find(
+      ({ id }) => id === activeWorkspaceId
+    );
+
+    const startEditingWorkspaceName = () => {
+      if (!activeWorkspace) return;
+
+      setWorkspaceNameDraft(activeWorkspace.name);
+      setIsEditingWorkspaceName(true);
+    };
+
+    const saveWorkspaceName = async () => {
+      if (!activeWorkspace) return;
+
+      const name = workspaceNameDraft.trim();
+
+      if (!name) {
+        setIsEditingWorkspaceName(false);
+        return;
+      }
+
+      await updateWorkspace(activeWorkspace.id, name);
+
+      setWorkspaces((current) =>
+        current.map((workspace) =>
+          workspace.id === activeWorkspace.id
+            ? { ...workspace, name }
+            : workspace
+        )
+      );
+
+      setIsEditingWorkspaceName(false);
+    };
+    
   const canvasRef = useRef<HTMLElement>(null);
   const creationStart = useRef<{ x: number; y: number }>();
   const draftRef = useRef<DraftCard>();
@@ -39,8 +75,9 @@ export function App() {
             setWorkspaces(spaces);
 
             // Start on Space 1
-            setActiveWorkspaceId(
-                spaces.find((workspace) => workspace.slot === 1)?.id
+            
+        (
+              spaces.find((workspace) => workspace.slot === 1)?.id ?? null
             );
         });
     }, []);
@@ -91,8 +128,6 @@ export function App() {
   useEffect(() => () => {
     for (const timer of saveTimers.current.values()) clearTimeout(timer);
   }, []);
-
-  const activeWorkspace = workspaces.find(({ id }) => id === activeWorkspaceId);
 
   function persistCard(card: Card, immediately = false) {
     const previous = saveTimers.current.get(card.id);
@@ -165,13 +200,36 @@ export function App() {
       <header className="topbar" onPointerEnter={() => setMenuOpen(true)} onPointerLeave={() => setMenuOpen(false)}>
         <AnimatePresence>
           {isMenuOpen && activeWorkspace && (
-            <motion.div className="workspace-menu" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}>
+            <motion.div
+              className="workspace-menu"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+            >
               {workspaces.map((workspace) => (
-                <button key={workspace.id} className={workspace.id === activeWorkspaceId ? "active" : ""} onClick={() => setActiveWorkspaceId(workspace.id)}>
-                  <span>{workspace.slot}</span>{workspace.name}
-                </button>
+                <div
+                  key={workspace.id}
+                  className={`workspace-item ${
+                    workspace.id === activeWorkspaceId ? "active" : ""
+                  }`}
+                >
+                  <button
+                    className="workspace-button"
+                    onClick={() => setActiveWorkspaceId(workspace.id)}
+                  >
+                    {workspace.name || `SPACE ${workspace.slot}`}
+                  </button>
+                </div>
               ))}
-              {workspaces.length < 10 && <button className="new-space" onClick={() => void addWorkspace()}>New space</button>}
+
+              {workspaces.length < 10 && (
+                <button
+                  className="new-space"
+                  onClick={() => void addWorkspace()}
+                >
+                  New space
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -183,6 +241,90 @@ export function App() {
         onPointerMove={handleCanvasPointerMove}
         onPointerUp={handleCanvasPointerUp}
       >
+          {cards.length === 0 && activeWorkspace && (
+            <motion.div
+              className="empty-space-note"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.25 }}
+            >
+              <div
+                className="empty-space-name-row"
+                onPointerDown={(event) => event.stopPropagation()}
+              >
+                {isEditingWorkspaceName ? (
+                  <input
+                    className="empty-space-name-input"
+                    value={workspaceNameDraft}
+                                           autoFocus
+                                           onFocus={(event) => event.currentTarget.select()}
+                                           onChange={(event) => setWorkspaceNameDraft(event.target.value)}
+                    onBlur={() => void saveWorkspaceName()}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        void saveWorkspaceName();
+                      }
+
+                      if (event.key === "Escape") {
+                        setIsEditingWorkspaceName(false);
+                      }
+                    }}
+                  />
+                ) : (
+                  <>
+                     <div className="empty-space-slot">
+                       {(activeWorkspace.name || `SPACE ${activeWorkspace.slot}`).toUpperCase()}
+                     </div>
+
+                     <button
+                       type="button"
+                       className="empty-space-edit"
+                       onPointerDown={(event) => {
+                         event.stopPropagation();
+                       }}
+                       onClick={(event) => {
+                         event.stopPropagation();
+                         startEditingWorkspaceName();
+                       }}
+                     >
+                     <svg
+                       width="14"
+                       height="14"
+                       viewBox="0 0 24 24"
+                       fill="none"
+                       xmlns="http://www.w3.org/2000/svg"
+                       aria-hidden="true"
+                     >
+                       <path
+                         d="M4 20h4L19.5 8.5a2.12 2.12 0 0 0-3-3L4 17v3Z"
+                         stroke="currentColor"
+                         strokeWidth="1.8"
+                         strokeLinecap="round"
+                         strokeLinejoin="round"
+                       />
+                       <path
+                         d="m14.5 7.5 2 2"
+                         stroke="currentColor"
+                         strokeWidth="1.8"
+                         strokeLinecap="round"
+                       />
+                     </svg>
+                     </button>
+                  </>
+                )}
+              </div>
+
+              <div className="empty-space-title">
+                This is your thinking space.
+              </div>
+
+              <div className="empty-space-hint">
+                Create a card to start.
+              </div>
+            </motion.div>
+          )}
+          
         {cards.map((card) => <CardView
                    key={card.id}
                    card={card}
@@ -237,10 +379,11 @@ function CardView({
     const dx = event.clientX - operation.x;
     const dy = event.clientY - operation.y;
     const canvas = event.currentTarget.closest(".canvas")?.getBoundingClientRect();
+      const topBoundary = 64;
     const maxX = Math.max(0, (canvas?.width ?? Infinity) - operation.card.width);
     const maxY = Math.max(0, (canvas?.height ?? Infinity) - operation.card.height);
     const next = operation.mode === "move"
-      ? { ...operation.card, x: Math.min(maxX, Math.max(0, operation.card.x + dx)), y: Math.min(maxY, Math.max(0, operation.card.y + dy)) }
+      ? { ...operation.card, x: Math.min(maxX, Math.max(0, operation.card.x + dx)), y: Math.min(maxY, Math.max(topBoundary, operation.card.y + dy)) }
       : {
           ...operation.card,
           width: Math.min(Math.max(MIN_CARD_SIZE, (canvas?.width ?? Infinity) - operation.card.x), Math.max(MIN_CARD_SIZE, operation.card.width + dx)),
