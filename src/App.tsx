@@ -5,7 +5,7 @@ import type { Card, Workspace } from "./domain";
 import { createCard, createWorkspace, deleteCard, loadCards, loadWorkspaces, updateCard, updateWorkspace } from "./native";
 
 const MIN_CARD_SIZE = 120;
-const DEFAULT_CARD = { width: 260, height: 160 };
+const DEFAULT_CARD = { width: 120, height: 120 };
 
 type DraftCard = Omit<Card, "id" | "workspaceId" | "text">;
 
@@ -363,7 +363,35 @@ export function App() {
               </motion.div>
             ))}
           </AnimatePresence>
-        {draft && <div className="card card-draft" style={cardStyle(draft)} />}
+          <AnimatePresence>
+            {draft && (
+              <motion.div
+                className="card card-draft"
+                style={{
+                    left: draft.x,
+                    top: draft.y,
+                    width: draft.width,
+                    height: draft.height,
+                }}
+                initial={{
+                  opacity: 0,
+                  scale: 0.88,
+                }}
+                animate={{
+                  opacity: 0.45,
+                  scale: 1,
+                }}
+                exit={{
+                  opacity: 0,
+                  scale: 0.96,
+                }}
+                transition={{
+                  duration: 0.18,
+                  ease: "easeOut",
+                }}
+              />
+            )}
+          </AnimatePresence>
       </section>
     </main>
   );
@@ -546,6 +574,10 @@ function CardView({
                   <textarea
                     ref={textareaRef}
                   autoFocus={autoFocus}
+                  spellCheck={false}
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    autoComplete="off"
                     aria-label="Card text"
                     value={card.text}
                   placeholder={isActive && !card.text ? "Write something..." : ""}

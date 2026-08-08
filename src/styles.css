@@ -61,7 +61,12 @@ button, input, textarea { font: inherit; }
 }
 
 
-.card-draft { opacity: 0.45; pointer-events: none; }
+.card-draft {
+  pointer-events: none;
+  background: rgb(255 255 255 / 5%);
+  filter: blur(2px);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 8%);
+}
 
 .card textarea {
     width: 100%;
