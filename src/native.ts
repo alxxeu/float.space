@@ -32,3 +32,20 @@ export async function updateWorkspace(
   return invoke("update_workspace", { id, name });
 }
 
+export async function loadOnboarding(): Promise<{
+  completed: boolean;
+  step: number;
+}> {
+  return invoke("load_onboarding");
+}
+
+export async function saveOnboarding(
+  completed: boolean,
+  step: number
+): Promise<void> {
+  return invoke("save_onboarding", {
+    completed,
+    step,
+  });
+}
+

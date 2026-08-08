@@ -64,6 +64,41 @@ fn update_workspace(
         .map_err(|error| error.to_string())
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OnboardingState {
+    completed: bool,
+    step: i64,
+}
+
+#[tauri::command]
+fn load_onboarding(
+    state: State<'_, AppState>,
+) -> Result<OnboardingState, String> {
+    let (completed, step) = state
+        .database
+        .lock()
+        .map_err(|_| "Onboarding storage is unavailable".to_string())?
+        .load_onboarding()
+        .map_err(|error| error.to_string())?;
+
+    Ok(OnboardingState { completed, step })
+}
+
+#[tauri::command]
+fn save_onboarding(
+    completed: bool,
+    step: i64,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    state
+        .database
+        .lock()
+        .map_err(|_| "Onboarding storage is unavailable".to_string())?
+        .save_onboarding(completed, step)
+        .map_err(|error| error.to_string())
+}
+
 pub fn run() {
    let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
     .with_shortcuts([
@@ -198,7 +233,18 @@ if let Err(error) = app_handle.emit("switch-workspace", slot) {
             window.show()?;
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![list_workspaces, create_workspace,    update_workspace, list_cards, create_card, update_card, delete_card])
+        
+       .invoke_handler(tauri::generate_handler![
+    list_workspaces,
+    create_workspace,
+    update_workspace,
+    list_cards,
+    create_card,
+    update_card,
+    delete_card,
+    load_onboarding,
+    save_onboarding
+])
         .run(tauri::generate_context!())
         .expect("error while running Floatspace");
 }

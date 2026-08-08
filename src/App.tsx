@@ -2,7 +2,19 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import type { Card, Workspace } from "./domain";
-import { createCard, createWorkspace, deleteCard, loadCards, loadWorkspaces, updateCard, updateWorkspace } from "./native";
+import {
+  createCard,
+  createWorkspace,
+  deleteCard,
+  loadCards,
+  loadOnboarding,
+  loadWorkspaces,
+  saveOnboarding,
+  updateCard,
+  updateWorkspace,
+} from "./native";
+
+import { Onboarding, type OnboardingStep } from "./Onboarding";
 
 const MIN_CARD_SIZE = 120;
 const DEFAULT_CARD = { width: 120, height: 120 };
@@ -57,6 +69,25 @@ export function App() {
       setIsEditingWorkspaceName(false);
     };
     const [isFloatspaceLayer, setIsFloatspaceLayer] = useState(false);
+    const [onboardingStep, setOnboardingStep] =
+      useState<OnboardingStep | null>(null);
+    const onboardingStepRef = useRef<OnboardingStep | null>(null);
+
+    useEffect(() => {
+      onboardingStepRef.current = onboardingStep;
+    }, [onboardingStep]);
+    
+    useEffect(() => {
+          function handleResetOnboardingHotkey(event: KeyboardEvent) {
+            if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "o") {
+              event.preventDefault();
+              void setOnboarding(0);
+            }
+          }
+
+          window.addEventListener("keydown", handleResetOnboardingHotkey);
+          return () => window.removeEventListener("keydown", handleResetOnboardingHotkey);
+        }, []);
     
   const canvasRef = useRef<HTMLElement>(null);
   const creationStart = useRef<{ x: number; y: number }>();
@@ -83,6 +114,22 @@ export function App() {
     }, []);
     
     useEffect(() => {
+      void loadOnboarding().then(({ completed, step }) => {
+        if (completed) {
+          setOnboardingStep(null);
+          return;
+        }
+
+        const safeStep = Math.max(
+          0,
+          Math.min(3, step)
+        ) as OnboardingStep;
+
+        setOnboardingStep(safeStep);
+      });
+    }, []);
+    
+    useEffect(() => {
         let unlisten: (() => void) | undefined;
 
         void listen<number>("switch-workspace", (event) => {
@@ -106,6 +153,21 @@ export function App() {
 
                 if (workspace) {
                     setActiveWorkspaceId(workspace.id);
+                }
+                
+                if (
+                  onboardingStepRef.current === 0 &&
+                  slot === 1
+                ) {
+                  void setOnboarding(1);
+                }
+
+                if (
+                  onboardingStepRef.current === 3 &&
+                    slot >= 2 &&
+                    slot <= 8
+                ) {
+                  void completeOnboarding();
                 }
 
                 return current;
@@ -197,6 +259,9 @@ export function App() {
         }));
           setFocusCardId(created.id);
         setCards((current) => [...current, created]);
+          if (onboardingStep === 1) {
+            void setOnboarding(2);
+          }
       });
   }
 
@@ -207,6 +272,15 @@ export function App() {
     setActiveWorkspaceId(workspace.id);
     setMenuOpen(false);
   }
+    async function setOnboarding(step: OnboardingStep) {
+      setOnboardingStep(step);
+      await saveOnboarding(false, step);
+    }
+
+    async function completeOnboarding() {
+      setOnboardingStep(null);
+      await saveOnboarding(true, 3);
+    }
 
   return (
     <main className="app-shell" aria-label="Floatspace">
@@ -334,8 +408,13 @@ export function App() {
                 <CardView
                   card={card}
                 autoFocus={card.id === focusCardId}
-                                  focusedCardId={focusedCardId}
-                                  setFocusedCardId={setFocusedCardId}
+                focusedCardId={focusedCardId}
+                setFocusedCardId={setFocusedCardId}
+                                  onType={() => {
+                                                      if (onboardingStep === 2) {
+                                                        void setOnboarding(3);
+                                                      }
+                                                  }}
                   onChange={changeCard}
                   onActivate={() => {
                       
@@ -390,6 +469,11 @@ export function App() {
             )}
           </AnimatePresence>
       </section>
+          {onboardingStep !== null && (
+            <div className="onboarding-layer">
+              <Onboarding step={onboardingStep} />
+            </div>
+          )}
     </main>
   );
 }
@@ -406,6 +490,7 @@ function CardView({
   onChange,
   onDelete,
   onActivate,
+    onType,
   zIndex
 }: {
   card: Card;
@@ -415,6 +500,7 @@ function CardView({
   onChange: (card: Card, immediately?: boolean) => void;
   onDelete: (id: string) => void;
   onActivate: () => void;
+    onType?: () => void;
   zIndex: number;
 }) {
     const start = useRef<{
@@ -580,9 +666,10 @@ function CardView({
                   placeholder={isActive && !card.text ? "Write something..." : ""}
                   onFocus={() => setIsActive(true)}
                   onBlur={() => setIsActive(false)}
-                    onChange={(event) =>
-                      onChange({ ...card, text: event.target.value })
-                    }
+                    onChange={(event) => {
+                      onChange({ ...card, text: event.target.value });
+                      onType?.();
+                    }}
                   />
                   
                   <div className="resize-handle"

@@ -63,6 +63,15 @@ impl Database {
               updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS cards_workspace_id_idx ON cards(workspace_id);
+            
+            CREATE TABLE IF NOT EXISTS onboarding (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    completed INTEGER NOT NULL DEFAULT 0,
+    step INTEGER NOT NULL DEFAULT 0
+);
+
+INSERT OR IGNORE INTO onboarding (id, completed, step)
+VALUES (1, 0, 0);
             ",
         )?;
 
@@ -130,6 +139,33 @@ pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()>
         self.connection.execute("DELETE FROM cards WHERE id = ?1", [id])?;
         Ok(())
     }
+    
+    pub fn load_onboarding(&self) -> rusqlite::Result<(bool, i64)> {
+    self.connection.query_row(
+        "SELECT completed, step FROM onboarding WHERE id = 1",
+        [],
+        |row| {
+            let completed: i64 = row.get(0)?;
+            let step: i64 = row.get(1)?;
+            Ok((completed != 0, step))
+        },
+    )
+}
+
+pub fn save_onboarding(
+    &self,
+    completed: bool,
+    step: i64,
+) -> rusqlite::Result<()> {
+    self.connection.execute(
+        "UPDATE onboarding
+         SET completed = ?1, step = ?2
+         WHERE id = 1",
+        params![completed as i64, step],
+    )?;
+
+    Ok(())
+}
 
     fn card_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Card> {
         Ok(Card { id: row.get(0)?, workspace_id: row.get(1)?, text: row.get(2)?, x: row.get(3)?, y: row.get(4)?, width: row.get(5)?, height: row.get(6)? })
