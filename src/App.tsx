@@ -79,9 +79,6 @@ export function App() {
 
             setWorkspaces(spaces);
 
-            setActiveWorkspaceId(
-              spaces.find((workspace) => workspace.slot === 1)?.id ?? null
-            );
         });
     }, []);
     
