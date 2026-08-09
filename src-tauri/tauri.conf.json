@@ -26,6 +26,12 @@
     ],
     "security": { "csp": null }
   },
-  "bundle": { "active": true, "targets": "all" }
-}
+  "bundle": {
+     "active": true,
+     "targets": ["app", "dmg"],
+     "macOS": {
+       "minimumSystemVersion": "26.0"
+     }
+   }
+ }
 
