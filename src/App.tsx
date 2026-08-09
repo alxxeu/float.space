@@ -81,7 +81,7 @@ export function App() {
           function handleResetOnboardingHotkey(event: KeyboardEvent) {
             if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "o") {
               event.preventDefault();
-              void setOnboarding(0);
+              void setOnboarding(1);
             }
           }
 
@@ -99,17 +99,16 @@ export function App() {
         void loadWorkspaces().then(async (loaded) => {
             let spaces = [...loaded];
 
-            for (let slot = 1; slot <= 8; slot++) {
-                if (!spaces.some((workspace) => workspace.slot === slot)) {
-                    const workspace = await createWorkspace(`Space ${slot}`);
-                    spaces.push(workspace);
-                }
+            for (let slot = 2; slot <= 9; slot++) {
+              if (!spaces.some((workspace) => workspace.slot === slot)) {
+                  const workspace = await createWorkspace(`Space ${slot - 1}`);
+                      spaces.push(workspace);
+              }
             }
 
             spaces.sort((a, b) => a.slot - b.slot);
 
             setWorkspaces(spaces);
-
         });
     }, []);
     
@@ -121,11 +120,11 @@ export function App() {
         }
 
         const safeStep = Math.max(
-          0,
-          Math.min(3, step)
+          1,
+          Math.min(4, step)
         ) as OnboardingStep;
-
-        setOnboardingStep(safeStep);
+          
+          setIsFloatspaceLayer(true);
       });
     }, []);
     
@@ -136,7 +135,7 @@ export function App() {
             const slot = event.payload;
 
             // ⌥1 = normal macOS Desktop
-            if (slot === 0) {
+            if (slot === 1) {
                 setIsFloatspaceLayer(false);
                 setActiveWorkspaceId(null);
                 setCards([]);
@@ -156,16 +155,16 @@ export function App() {
                 }
                 
                 if (
-                  onboardingStepRef.current === 0 &&
-                  slot === 1
+                  onboardingStepRef.current === 1 &&
+                  slot === 2
                 ) {
-                  void setOnboarding(1);
+                  void setOnboarding(2);
                 }
 
                 if (
-                  onboardingStepRef.current === 3 &&
+                  onboardingStepRef.current === 4 &&
                     slot >= 2 &&
-                    slot <= 8
+                    slot <= 9
                 ) {
                   void completeOnboarding();
                 }
@@ -259,8 +258,8 @@ export function App() {
         }));
           setFocusCardId(created.id);
         setCards((current) => [...current, created]);
-          if (onboardingStep === 1) {
-            void setOnboarding(2);
+          if (onboardingStep === 2) {
+            void setOnboarding(3);
           }
       });
   }
@@ -279,7 +278,7 @@ export function App() {
 
     async function completeOnboarding() {
       setOnboardingStep(null);
-      await saveOnboarding(true, 3);
+      await saveOnboarding(true, 4);
     }
 
   return (
@@ -304,7 +303,7 @@ export function App() {
                     className="workspace-button"
                     onClick={() => setActiveWorkspaceId(workspace.id)}
                   >
-                    {workspace.name || `SPACE ${workspace.slot}`}
+                    {workspace.name || `SPACE ${workspace.slot + 1}`}
                   </button>
                 </div>
               ))}
@@ -375,7 +374,7 @@ export function App() {
                                                            className="empty-space-slot"
                                                            onClick={startEditingWorkspaceName}
                                                          >
-                                                           {activeWorkspace.name || `SPACE ${activeWorkspace.slot}`}
+                                                           {activeWorkspace.name || `SPACE ${activeWorkspace.slot+1}`}
                                                          </div>
                                                        )}
                                                      </div>
@@ -411,8 +410,8 @@ export function App() {
                 focusedCardId={focusedCardId}
                 setFocusedCardId={setFocusedCardId}
                                   onType={() => {
-                                                      if (onboardingStep === 2) {
-                                                        void setOnboarding(3);
+                                                      if (onboardingStep === 3) {
+                                                        void setOnboarding(4);
                                                       }
                                                   }}
                   onChange={changeCard}

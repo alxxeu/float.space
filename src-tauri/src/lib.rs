@@ -151,7 +151,7 @@ pub fn run() {
     eprintln!("Floatspace could not show desktop icons: {error}");
 }
 
-    if let Err(error) = app_handle.emit("switch-workspace", 0u8) {
+    if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
         eprintln!("Floatspace could not switch to Desktop: {error}");
     }
 
@@ -160,14 +160,14 @@ pub fn run() {
 
             // ⌥2–⌥9 = Floatspace spaces
             let slot = match shortcut {
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 1,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 2,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 3,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 4,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 5,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 6,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 7,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 8,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 2,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 3,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 4,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 5,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 6,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 7,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 8,
+                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 9,
                 _ => return,
             };
 

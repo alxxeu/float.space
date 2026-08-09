@@ -1,31 +1,31 @@
 import { motion } from "framer-motion";
 
-export type OnboardingStep = 0 | 1 | 2 | 3;
+export type OnboardingStep = 1 | 2 | 3 | 4;
 
 type OnboardingProps = {
   step: OnboardingStep;
 };
 
 const content = {
-  0: {
+  1: {
     eyebrow: "FLOATSPACE",
     title: "Give your thoughts a place",
     text: "Your desktop is divided into Spaces. Press to open your first one.",
     keys: ["⌥", "2"],
   },
-  1: {
+  2: {
     eyebrow: "SPACE 1",
     title: "Create your first card.",
     text: "Click and drag anywhere to create a note.",
     keys: null,
   },
-  2: {
+  3: {
     eyebrow: "YOUR FIRST CARD",
     title: "Nice. This is your note.",
     text: "Start typing right away. Move the card anywhere on your desktop.",
     keys: null,
   },
-  3: {
+  4: {
     eyebrow: "SPACES",
     title: "Keep things separate",
     text: "Create up to 8 Spaces for different ideas, projects, and thoughts.",
@@ -59,7 +59,7 @@ export function Onboarding({
         }}
       >
         <div className="onboarding-progress">
-          {[0, 1, 2, 3].map((index) => (
+          {[1, 2, 3, 4].map((index) => (
             <span
               key={index}
               className={`onboarding-dot ${index === step ? "active" : ""}`}
@@ -81,7 +81,7 @@ export function Onboarding({
 
         {current.keys && (
           <div className="onboarding-keys">
-            {current.keys.map((key, index) => (
+            {current.keys.map((key: string, index: number) => (
               <kbd key={index} className="onboarding-key">
                 {key}
               </kbd>
