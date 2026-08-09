@@ -131,10 +131,14 @@ pub fn run() {
          if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
     let state = app_handle.state::<DesktopLayerState>();
 
-    let mode = match state.mode.lock() {
+    let needs_desktop_mode = match state.mode.lock() {
         Ok(mut mode) => {
-            *mode = native_desktop::Mode::Desktop;
-            *mode
+             if *mode == native_desktop::Mode::Desktop {
+                false
+            } else {
+                *mode = native_desktop::Mode::Desktop;
+                true
+            }
         }
         Err(_) => {
             eprintln!("Floatspace desktop layer state is unavailable");
@@ -142,13 +146,15 @@ pub fn run() {
         }
     };
 
-    if let Err(error) = native_desktop::apply_mode(&window, mode) {
-        eprintln!("Floatspace could not enter Desktop mode: {error}");
-        return;
-    }
+  if needs_desktop_mode {
+        if let Err(error) = native_desktop::apply_mode(&window, native_desktop::Mode::Desktop) {
+            eprintln!("Floatspace could not enter Desktop mode: {error}");
+            return;
+        }
     
     if let Err(error) = native_desktop::set_desktop_icons_visible(true) {
     eprintln!("Floatspace could not show desktop icons: {error}");
+}
 }
 
     if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
@@ -195,10 +201,6 @@ if needs_workspace_mode {
     ) {
         eprintln!("Floatspace could not enter Workspace mode: {error}");
         return;
-    }
-
-    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
-        eprintln!("Floatspace could not hide desktop icons: {error}");
     }
 
     if let Err(error) = native_desktop::set_desktop_icons_visible(false) {

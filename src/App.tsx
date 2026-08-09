@@ -27,6 +27,7 @@ export function App() {
   const [cards, setCards] = useState<Card[]>([]);
     const [focusCardId, setFocusCardId] = useState<string | null>(null);
     const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
+    const [cardsWorkspaceId, setCardsWorkspaceId] = useState<string | null>(null);
     const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
     const nextZIndex = useRef(1);
   const [isMenuOpen, setMenuOpen] = useState(false);
@@ -50,11 +51,6 @@ export function App() {
       if (!activeWorkspace) return;
 
       const name = workspaceNameDraft.trim();
-
-      if (!name) {
-        setIsEditingWorkspaceName(false);
-        return;
-      }
 
       await updateWorkspace(activeWorkspace.id, name);
 
@@ -183,10 +179,14 @@ export function App() {
     useEffect(() => {
         if (!activeWorkspaceId) {
             setCards([]);
+            setCardsWorkspaceId(null);
             return;
         }
 
-        void loadCards(activeWorkspaceId).then(setCards);
+        void loadCards(activeWorkspaceId).then((loaded) => {
+            setCards(loaded);
+            setCardsWorkspaceId(activeWorkspaceId);
+        });
     }, [activeWorkspaceId]);
 
   useEffect(() => () => {
@@ -303,7 +303,7 @@ export function App() {
                     className="workspace-button"
                     onClick={() => setActiveWorkspaceId(workspace.id)}
                   >
-                    {workspace.name || `SPACE ${workspace.slot + 1}`}
+                    {workspace.name || `SPACE ${workspace.slot}`}
                   </button>
                 </div>
               ))}
@@ -374,7 +374,7 @@ export function App() {
                                                            className="empty-space-slot"
                                                            onClick={startEditingWorkspaceName}
                                                          >
-                                                           {activeWorkspace.name || `SPACE ${activeWorkspace.slot+1}`}
+                                                           {activeWorkspace.name || `SPACE ${activeWorkspace.slot}`}
                                                          </div>
                                                        )}
                                                      </div>
@@ -389,7 +389,7 @@ export function App() {
             </motion.div>
           )}
           
-          <AnimatePresence>
+          <AnimatePresence key={cardsWorkspaceId}>
             {cards.map((card) => (
               <motion.div
                 key={card.id}
