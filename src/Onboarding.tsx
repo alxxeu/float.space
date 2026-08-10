@@ -116,6 +116,16 @@ export function Onboarding({
           {current.text}
         </div>
 
+          {current.keys && (
+            <div className="onboarding-keys">
+              {current.keys.map((key, index) => (
+                <kbd key={index} className="onboarding-key">
+                  {key}
+                </kbd>
+              ))}
+            </div>
+          )}
+          
           {step === 5 && (
             <>
               <div className="integration-item">
@@ -150,7 +160,6 @@ export function Onboarding({
                   )}
                 </button>
               </div>
-
               <div className="onboarding-finish-hint">
                 <div className="onboarding-finish-copy">
                   <div className="onboarding-finish-title">
