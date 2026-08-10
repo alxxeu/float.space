@@ -3,5 +3,10 @@
   "identifier": "default",
   "description": "Default capabilities for the Floatspace window.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "autostart:allow-enable",
+    "autostart:allow-disable",
+    "autostart:allow-is-enabled"
+  ]
 }

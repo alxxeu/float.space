@@ -2,20 +2,11 @@ use tauri::{Runtime, WebviewWindow};
 
 /// Desktop mode lets Finder receive input. Workspace mode is the temporary,
 /// deliberate state in which Floatspace receives pointer events.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Mode {
     Desktop,
     Workspace,
-}
-
-impl Mode {
-    pub fn toggle(&mut self) -> Self {
-        *self = match *self {
-            Self::Desktop => Self::Workspace,
-            Self::Workspace => Self::Desktop,
-        };
-        *self
-    }
+    Overlay,
 }
 
 pub fn configure<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
@@ -52,11 +43,15 @@ fn apply_macos_mode<R: Runtime>(window: &WebviewWindow<R>, mode: Mode) -> tauri:
     native_window.setHasShadow(false);
     native_window.setCollectionBehavior(
         NSWindowCollectionBehavior::CanJoinAllSpaces
+            | NSWindowCollectionBehavior::FullScreenAuxiliary
             | NSWindowCollectionBehavior::Stationary
             | NSWindowCollectionBehavior::IgnoresCycle,
     );
 
     let desktop_icon_level = CGWindowLevelForKey(CGWindowLevelKey::DesktopIconWindowLevelKey);
+
+    let screen_saver_level = CGWindowLevelForKey(CGWindowLevelKey::ScreenSaverWindowLevelKey);
+
     match mode {
         // Finder's icons remain in front and receive all mouse events.
         Mode::Desktop => {
@@ -68,6 +63,12 @@ fn apply_macos_mode<R: Runtime>(window: &WebviewWindow<R>, mode: Mode) -> tauri:
         Mode::Workspace => {
             native_window.setLevel((desktop_icon_level + 1) as isize);
             native_window.setIgnoresMouseEvents(false);
+        }
+        // High, not interactive layer
+        // Just for onboarding and startup hint notification
+        Mode::Overlay => {
+            native_window.setLevel((desktop_icon_level + 1) as isize);
+            native_window.setIgnoresMouseEvents(true);
         }
     }
 
@@ -91,5 +92,33 @@ pub fn set_desktop_icons_visible(visible: bool) -> std::io::Result<()> {
 
 #[cfg(not(target_os = "macos"))]
 pub fn set_desktop_icons_visible(_visible: bool) -> std::io::Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+pub fn minimize_other_windows() -> std::io::Result<()> {
+    std::process::Command::new("osascript")
+        .args([
+            "-e",
+            r#"
+            tell application "System Events"
+                set frontApp to first application process whose frontmost is true
+                repeat with p in application processes
+                    if (name of p) is not "Floatspace" and (background only of p) is false then
+                        try
+                            set visible of p to false
+                        end try
+                    end if
+                end repeat
+            end tell
+            "#,
+        ])
+        .status()?;
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn minimize_other_windows() -> std::io::Result<()> {
     Ok(())
 }

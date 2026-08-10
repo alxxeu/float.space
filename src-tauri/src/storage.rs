@@ -81,9 +81,9 @@ VALUES (1, 0, 0);
     }
 
     pub fn list_workspaces(&self) -> rusqlite::Result<Vec<Workspace>> {
-        let mut statement = self.connection.prepare(
-            "SELECT id, name, slot FROM workspaces ORDER BY slot ASC",
-        )?;
+        let mut statement = self
+            .connection
+            .prepare("SELECT id, name, slot FROM workspaces ORDER BY slot ASC")?;
         let workspaces = statement
             .query_map([], |row| {
                 Ok(Workspace {
@@ -98,23 +98,36 @@ VALUES (1, 0, 0);
     }
 
     pub fn create_workspace(&self, name: String) -> rusqlite::Result<Workspace> {
-        let slot = self.connection.query_row("SELECT COALESCE(MAX(slot), 0) + 1 FROM workspaces", [], |row| row.get::<_, i64>(0))?;
-        if slot > 10 { return Err(rusqlite::Error::ExecuteReturnedResults); }
-        let workspace = Workspace { id: Uuid::new_v4().to_string(), name, slot };
-        self.connection.execute("INSERT INTO workspaces (id, name, slot) VALUES (?1, ?2, ?3)", params![workspace.id, workspace.name, workspace.slot])?;
+        let slot = self.connection.query_row(
+            "SELECT COALESCE(MAX(slot), 0) + 1 FROM workspaces",
+            [],
+            |row| row.get::<_, i64>(0),
+        )?;
+        if slot > 10 {
+            return Err(rusqlite::Error::ExecuteReturnedResults);
+        }
+        let workspace = Workspace {
+            id: Uuid::new_v4().to_string(),
+            name,
+            slot,
+        };
+        self.connection.execute(
+            "INSERT INTO workspaces (id, name, slot) VALUES (?1, ?2, ?3)",
+            params![workspace.id, workspace.name, workspace.slot],
+        )?;
         Ok(workspace)
     }
 
-pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()> {
-    self.connection.execute(
-        "UPDATE workspaces
+    pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "UPDATE workspaces
          SET name = ?1, updated_at = CURRENT_TIMESTAMP
          WHERE id = ?2",
-        params![name, id],
-    )?;
+            params![name, id],
+        )?;
 
-    Ok(())
-}
+        Ok(())
+    }
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
         let mut statement = self.connection.prepare("SELECT id, workspace_id, text, x, y, width, height FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC")?;
         let cards = statement
@@ -125,7 +138,15 @@ pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()>
     }
 
     pub fn create_card(&self, new_card: NewCard) -> rusqlite::Result<Card> {
-        let card = Card { id: Uuid::new_v4().to_string(), workspace_id: new_card.workspace_id, text: new_card.text, x: new_card.x, y: new_card.y, width: new_card.width, height: new_card.height };
+        let card = Card {
+            id: Uuid::new_v4().to_string(),
+            workspace_id: new_card.workspace_id,
+            text: new_card.text,
+            x: new_card.x,
+            y: new_card.y,
+            width: new_card.width,
+            height: new_card.height,
+        };
         self.connection.execute("INSERT INTO cards (id, workspace_id, text, x, y, width, height) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![card.id, card.workspace_id, card.text, card.x, card.y, card.width, card.height])?;
         Ok(card)
     }
@@ -136,47 +157,52 @@ pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()>
     }
 
     pub fn delete_card(&self, id: String) -> rusqlite::Result<()> {
-        self.connection.execute("DELETE FROM cards WHERE id = ?1", [id])?;
+        self.connection
+            .execute("DELETE FROM cards WHERE id = ?1", [id])?;
         Ok(())
     }
-    
-    pub fn load_onboarding(&self) -> rusqlite::Result<(bool, i64)> {
-    self.connection.query_row(
-        "SELECT completed, step FROM onboarding WHERE id = 1",
-        [],
-        |row| {
-            let completed: i64 = row.get(0)?;
-            let step: i64 = row.get(1)?;
-            Ok((completed != 0, step))
-        },
-    )
-}
 
-pub fn save_onboarding(
-    &self,
-    completed: bool,
-    step: i64,
-) -> rusqlite::Result<()> {
-    self.connection.execute(
-        "UPDATE onboarding
+    pub fn load_onboarding(&self) -> rusqlite::Result<(bool, i64)> {
+        self.connection.query_row(
+            "SELECT completed, step FROM onboarding WHERE id = 1",
+            [],
+            |row| {
+                let completed: i64 = row.get(0)?;
+                let step: i64 = row.get(1)?;
+                Ok((completed != 0, step))
+            },
+        )
+    }
+
+    pub fn save_onboarding(&self, completed: bool, step: i64) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "UPDATE onboarding
          SET completed = ?1, step = ?2
          WHERE id = 1",
-        params![completed as i64, step],
-    )?;
+            params![completed as i64, step],
+        )?;
 
-    Ok(())
-}
+        Ok(())
+    }
 
     fn card_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Card> {
-        Ok(Card { id: row.get(0)?, workspace_id: row.get(1)?, text: row.get(2)?, x: row.get(3)?, y: row.get(4)?, width: row.get(5)?, height: row.get(6)? })
+        Ok(Card {
+            id: row.get(0)?,
+            workspace_id: row.get(1)?,
+            text: row.get(2)?,
+            x: row.get(3)?,
+            y: row.get(4)?,
+            width: row.get(5)?,
+            height: row.get(6)?,
+        })
     }
 
     fn ensure_default_workspace(&self) -> rusqlite::Result<()> {
-        let exists: bool = self.connection.query_row(
-            "SELECT EXISTS(SELECT 1 FROM workspaces)",
-            [],
-            |row| row.get(0),
-        )?;
+        let exists: bool =
+            self.connection
+                .query_row("SELECT EXISTS(SELECT 1 FROM workspaces)", [], |row| {
+                    row.get(0)
+                })?;
 
         if !exists {
             self.connection.execute(

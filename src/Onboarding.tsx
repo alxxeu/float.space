@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 
-export type OnboardingStep = 1 | 2 | 3 | 4;
+export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
 type OnboardingProps = {
   step: OnboardingStep;

@@ -27,35 +27,56 @@ fn list_workspaces(state: State<'_, AppState>) -> Result<Vec<Workspace>, String>
 
 #[tauri::command]
 fn create_workspace(name: String, state: State<'_, AppState>) -> Result<Workspace, String> {
-    state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.create_workspace(name).map_err(|error| error.to_string())
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .create_workspace(name)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn list_cards(workspace_id: String, state: State<'_, AppState>) -> Result<Vec<Card>, String> {
-    state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.list_cards(workspace_id).map_err(|error| error.to_string())
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .list_cards(workspace_id)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn create_card(card: NewCard, state: State<'_, AppState>) -> Result<Card, String> {
-    state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.create_card(card).map_err(|error| error.to_string())
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .create_card(card)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn update_card(card: Card, state: State<'_, AppState>) -> Result<(), String> {
-    state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.update_card(card).map_err(|error| error.to_string())
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .update_card(card)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
 fn delete_card(id: String, state: State<'_, AppState>) -> Result<(), String> {
-    state.database.lock().map_err(|_| "Workspace storage is unavailable".to_string())?.delete_card(id).map_err(|error| error.to_string())
+    state
+        .database
+        .lock()
+        .map_err(|_| "Workspace storage is unavailable".to_string())?
+        .delete_card(id)
+        .map_err(|error| error.to_string())
 }
 
 #[tauri::command]
-fn update_workspace(
-    id: String,
-    name: String,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+fn update_workspace(id: String, name: String, state: State<'_, AppState>) -> Result<(), String> {
     state
         .database
         .lock()
@@ -72,9 +93,7 @@ struct OnboardingState {
 }
 
 #[tauri::command]
-fn load_onboarding(
-    state: State<'_, AppState>,
-) -> Result<OnboardingState, String> {
+fn load_onboarding(state: State<'_, AppState>) -> Result<OnboardingState, String> {
     let (completed, step) = state
         .database
         .lock()
@@ -86,11 +105,7 @@ fn load_onboarding(
 }
 
 #[tauri::command]
-fn save_onboarding(
-    completed: bool,
-    step: i64,
-    state: State<'_, AppState>,
-) -> Result<(), String> {
+fn save_onboarding(completed: bool, step: i64, state: State<'_, AppState>) -> Result<(), String> {
     state
         .database
         .lock()
@@ -99,123 +114,158 @@ fn save_onboarding(
         .map_err(|error| error.to_string())
 }
 
-pub fn run() {
-   let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
-    .with_shortcuts([
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit1),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit2),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit3),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit4),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit5),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit6),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit7),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit8),
-        Shortcut::new(Some(Modifiers::ALT), Code::Digit9),
-    ])
-    .expect("Floatspace shortcuts must be valid")
-    .with_handler(move |app, shortcut, event| {
-        if event.state() != ShortcutState::Pressed {
-            return;
-        }
+#[tauri::command]
+fn minimize_other_windows() -> Result<(), String> {
+    native_desktop::minimize_other_windows().map_err(|error| error.to_string())
+}
 
-        let app_handle = app.clone();
-        let shortcut = shortcut.clone();
-
-        let _ = app.run_on_main_thread(move || {
-            let Some(window) = app_handle.get_webview_window("main") else {
-                eprintln!("Floatspace main window is unavailable");
-                return;
-            };
-
-            // ⌥1 = normal macOS Desktop
-         if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
-    let state = app_handle.state::<DesktopLayerState>();
-
-    let needs_desktop_mode = match state.mode.lock() {
-        Ok(mut mode) => {
-             if *mode == native_desktop::Mode::Desktop {
-                false
-            } else {
-                *mode = native_desktop::Mode::Desktop;
-                true
-            }
-        }
-        Err(_) => {
-            eprintln!("Floatspace desktop layer state is unavailable");
-            return;
-        }
+#[tauri::command]
+fn set_overlay_mode(
+    enabled: bool,
+    restore_to_workspace: bool,
+    state: State<'_, DesktopLayerState>,
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
+    let mode = if enabled {
+        native_desktop::Mode::Overlay
+    } else if restore_to_workspace {
+        native_desktop::Mode::Workspace
+    } else {
+        native_desktop::Mode::Desktop
     };
 
-  if needs_desktop_mode {
-        if let Err(error) = native_desktop::apply_mode(&window, native_desktop::Mode::Desktop) {
-            eprintln!("Floatspace could not enter Desktop mode: {error}");
-            return;
-        }
-    
-    if let Err(error) = native_desktop::set_desktop_icons_visible(true) {
-    eprintln!("Floatspace could not show desktop icons: {error}");
-}
-}
+    println!(
+        "FLOATSPACE MODE: enabled={}, restore={}, mode={:?}",
+        enabled, restore_to_workspace, mode
+    );
 
-    if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
-        eprintln!("Floatspace could not switch to Desktop: {error}");
-    }
+    *state
+        .mode
+        .lock()
+        .map_err(|_| "Desktop layer state is unavailable".to_string())? = mode;
 
-    return;
+    native_desktop::apply_mode(&window, mode).map_err(|error| error.to_string())
 }
 
-            // ⌥2–⌥9 = Floatspace spaces
-            let slot = match shortcut {
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 2,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 3,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 4,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 5,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 6,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 7,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 8,
-                s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 9,
-                _ => return,
-            };
-
-           let state = app_handle.state::<DesktopLayerState>();
-
-let needs_workspace_mode = match state.mode.lock() {
-    Ok(mut mode) => {
-        if *mode == native_desktop::Mode::Workspace {
-            false
-        } else {
-            *mode = native_desktop::Mode::Workspace;
-            true
-        }
-    }
-    Err(_) => {
-        eprintln!("Floatspace desktop layer state is unavailable");
-        return;
-    }
-};
-
-if needs_workspace_mode {
-    if let Err(error) = native_desktop::apply_mode(
-        &window,
-        native_desktop::Mode::Workspace,
-    ) {
-        eprintln!("Floatspace could not enter Workspace mode: {error}");
-        return;
-    }
-
-    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
-        eprintln!("Floatspace could not hide desktop icons: {error}");
-    }
-}
-
-if let Err(error) = app_handle.emit("switch-workspace", slot) {
-    eprintln!("Floatspace could not switch workspace: {error}");
+pub fn run() {
+    let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
+        .with_shortcuts([
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit1),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit2),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit3),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit4),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit5),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit6),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit7),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit8),
+            Shortcut::new(Some(Modifiers::ALT), Code::Digit9),
+        ])
+        .expect("Floatspace shortcuts must be valid")
+        .with_handler(move |app, shortcut, event| {
+            if event.state() != ShortcutState::Pressed {
+                return;
             }
-        });
-    })
-    .build();
+
+            let app_handle = app.clone();
+            let shortcut = shortcut.clone();
+
+            let _ = app.run_on_main_thread(move || {
+                let Some(window) = app_handle.get_webview_window("main") else {
+                    eprintln!("Floatspace main window is unavailable");
+                    return;
+                };
+
+                // ⌥1 = normal macOS Desktop
+                if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
+                    let state = app_handle.state::<DesktopLayerState>();
+
+                    let needs_desktop_mode = match state.mode.lock() {
+                        Ok(mut mode) => {
+                            if *mode == native_desktop::Mode::Desktop {
+                                false
+                            } else {
+                                *mode = native_desktop::Mode::Desktop;
+                                true
+                            }
+                        }
+                        Err(_) => {
+                            eprintln!("Floatspace desktop layer state is unavailable");
+                            return;
+                        }
+                    };
+
+                    if needs_desktop_mode {
+                        if let Err(error) =
+                            native_desktop::apply_mode(&window, native_desktop::Mode::Desktop)
+                        {
+                            eprintln!("Floatspace could not enter Desktop mode: {error}");
+                            return;
+                        }
+
+                        if let Err(error) = native_desktop::set_desktop_icons_visible(true) {
+                            eprintln!("Floatspace could not show desktop icons: {error}");
+                        }
+                    }
+
+                    if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
+                        eprintln!("Floatspace could not switch to Desktop: {error}");
+                    }
+
+                    return;
+                }
+
+                // ⌥2–⌥9 = Floatspace spaces
+                let slot = match shortcut {
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 2,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 3,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 4,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 5,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 6,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 7,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 8,
+                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 9,
+                    _ => return,
+                };
+
+                let state = app_handle.state::<DesktopLayerState>();
+
+                let needs_workspace_mode = match state.mode.lock() {
+                    Ok(mut mode) => {
+                        if *mode == native_desktop::Mode::Workspace {
+                            false
+                        } else {
+                            *mode = native_desktop::Mode::Workspace;
+                            true
+                        }
+                    }
+                    Err(_) => {
+                        eprintln!("Floatspace desktop layer state is unavailable");
+                        return;
+                    }
+                };
+
+                if needs_workspace_mode {
+                    if let Err(error) =
+                        native_desktop::apply_mode(&window, native_desktop::Mode::Workspace)
+                    {
+                        eprintln!("Floatspace could not enter Workspace mode: {error}");
+                        return;
+                    }
+
+                    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
+                        eprintln!("Floatspace could not hide desktop icons: {error}");
+                    }
+                }
+
+                if let Err(error) = app_handle.emit("switch-workspace", slot) {
+                    eprintln!("Floatspace could not switch workspace: {error}");
+                }
+            });
+        })
+        .build();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(shortcut_plugin)
         .setup(|app| {
@@ -235,18 +285,19 @@ if let Err(error) = app_handle.emit("switch-workspace", slot) {
             window.show()?;
             Ok(())
         })
-        
-       .invoke_handler(tauri::generate_handler![
-    list_workspaces,
-    create_workspace,
-    update_workspace,
-    list_cards,
-    create_card,
-    update_card,
-    delete_card,
-    load_onboarding,
-    save_onboarding
-])
+        .invoke_handler(tauri::generate_handler![
+            list_workspaces,
+            create_workspace,
+            update_workspace,
+            set_overlay_mode,
+            minimize_other_windows,
+            list_cards,
+            create_card,
+            update_card,
+            delete_card,
+            load_onboarding,
+            save_onboarding
+        ])
         .run(tauri::generate_context!())
         .expect("error while running Floatspace");
 }

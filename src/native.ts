@@ -49,3 +49,16 @@ export async function saveOnboarding(
   });
 }
 
+export async function setOverlayMode(
+  enabled: boolean,
+  restoreToWorkspace = false
+): Promise<void> {
+  return invoke("set_overlay_mode", {
+    enabled,
+    restoreToWorkspace,
+  });
+}
+
+export async function minimizeOtherWindows(): Promise<void> {
+  return invoke("minimize_other_windows");
+}

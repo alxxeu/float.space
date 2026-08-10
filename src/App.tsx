@@ -28,6 +28,8 @@ import {
   saveOnboarding,
   updateCard,
   updateWorkspace,
+  setOverlayMode,
+  minimizeOtherWindows,
 } from "./native";
 
 import {
@@ -35,7 +37,18 @@ import {
     type OnboardingStep
 } from "./Onboarding";
 
+import {
+    StartupHint
+} from "./StartupHint";
+
+import {
+  enable as enableAutostart,
+  disable as disableAutostart,
+  isEnabled as isAutostartEnabled,
+} from "@tauri-apps/plugin-autostart";
+
 const MIN_CARD_SIZE = 120;
+const TOP_CREATION_LIMIT = 38;
 const DEFAULT_CARD = { width: MIN_CARD_SIZE, height: MIN_CARD_SIZE };
 const DELETE_HOLD_TIME = 400;
 
@@ -57,14 +70,12 @@ export function App() {
   const activeWorkspace = workspaces.find(
       ({ id }) => id === activeWorkspaceId
     );
-
   const startEditingWorkspaceName = () => {
       if (!activeWorkspace) return;
 
       setWorkspaceNameDraft(activeWorkspace.name);
       setIsEditingWorkspaceName(true);
     };
-
   const saveWorkspaceName = async () => {
       if (!activeWorkspace) return;
 
@@ -93,10 +104,10 @@ export function App() {
     
     useEffect(() => {
           function handleResetOnboardingHotkey(event: KeyboardEvent) {
-            if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "o") {
-              event.preventDefault();
-              void setOnboarding(1);
-            }
+              if (event.metaKey && event.shiftKey && event.key.toLowerCase() === "o") {
+                event.preventDefault();
+                void setOnboarding(1);
+              }
           }
 
           window.addEventListener("keydown", handleResetOnboardingHotkey);
@@ -108,6 +119,11 @@ export function App() {
   const draftRef = useRef<DraftCard>();
   const didDragToCreate = useRef(false);
   const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const [showStartupHint, setShowStartupHint] = useState(false);
+  const showStartupHintRef = useRef(false);
+  const [isCreatingCard, setIsCreatingCard] = useState(false);
+    
+    
 
     useEffect(() => {
         void loadWorkspaces().then(async (loaded) => {
@@ -127,9 +143,34 @@ export function App() {
     }, []);
     
     useEffect(() => {
+      if (!showStartupHint) {
+        return;
+      }
+
+      const timer = window.setTimeout(() => {
+        showStartupHintRef.current = false;
+        setShowStartupHint(false);
+      }, 3500);
+
+      return () => {
+        window.clearTimeout(timer);
+      };
+    }, [showStartupHint]);
+
+    
+    useEffect(() => {
+        console.log("AUTOSTART CHECK");
+        
+        void isAutostartEnabled().then((enabled) => {
+           console.log("FLOATSPACE AUTOSTART:", enabled);
+         });
       void loadOnboarding().then(({ completed, step }) => {
         if (completed) {
           setOnboardingStep(null);
+
+          showStartupHintRef.current = true;
+          setShowStartupHint(true);
+
           return;
         }
 
@@ -137,8 +178,9 @@ export function App() {
           1,
           Math.min(4, step)
         ) as OnboardingStep;
-          
+
           setIsFloatspaceLayer(true);
+          setOnboardingStep(safeStep);
       });
     }, []);
     
@@ -147,6 +189,12 @@ export function App() {
 
         void listen<number>("switch-workspace", (event) => {
             const slot = event.payload;
+            
+            if (showStartupHintRef.current && slot === 2) {
+              showStartupHintRef.current = false;
+              setShowStartupHint(false);
+              void setOverlayMode(false, true);
+            }
 
             // ⌥1 = normal macOS Desktop
             if (slot === 1) {
@@ -184,6 +232,7 @@ export function App() {
                 }
 
                 return current;
+                
             });
         }).then((cleanup) => {
             unlisten = cleanup;
@@ -243,39 +292,110 @@ export function App() {
     return { x: event.clientX - bounds.left, y: event.clientY - bounds.top };
   }
 
-  function handleCanvasPointerDown(event: React.PointerEvent<HTMLElement>) {
-    if (!activeWorkspaceId || event.target !== event.currentTarget) return;
-    setFocusedCardId(null);
-    const point = pointInCanvas(event);
-    creationStart.current = point;
-    didDragToCreate.current = false;
-    event.currentTarget.setPointerCapture(event.pointerId);
-    const initialDraft = { x: point.x, y: point.y, ...DEFAULT_CARD };
-    draftRef.current = initialDraft;
-    setDraft(initialDraft);
-  }
+    function handleCanvasPointerDown(event: React.PointerEvent) {
+      event.preventDefault();
 
-  function handleCanvasPointerMove(event: React.PointerEvent<HTMLElement>) {
-    if (!creationStart.current) return;
-    const point = pointInCanvas(event);
-    const start = creationStart.current;
-    const nextDraft = {
-      x: Math.min(start.x, point.x),
-      y: Math.min(start.y, point.y),
-      width: Math.max(MIN_CARD_SIZE, Math.abs(point.x - start.x)),
-      height: Math.max(MIN_CARD_SIZE, Math.abs(point.y - start.y)),
-    };
-    if (
-      Math.abs(point.x - start.x) > 8 ||
-      Math.abs(point.y - start.y) > 8
-    ) {
-      didDragToCreate.current = true;
+      if (!activeWorkspaceId) return;
+
+        if (event.target === event.currentTarget) {
+          setFocusedCardId(null);
+          document.activeElement instanceof HTMLElement &&
+            document.activeElement.blur();
+        } else {
+          return;
+        }
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rawPoint = pointInCanvas(event);
+
+      const point = {
+        x: Math.min(
+          Math.max(0, rawPoint.x),
+          canvas.clientWidth - MIN_CARD_SIZE
+        ),
+        y: Math.min(
+          Math.max(TOP_CREATION_LIMIT, rawPoint.y),
+          canvas.clientHeight - MIN_CARD_SIZE
+        ),
+      };
+
+      creationStart.current = point;
+      didDragToCreate.current = false;
+      setIsCreatingCard(true);
+
+      event.currentTarget.setPointerCapture(event.pointerId);
+
+      const initialDraft = {
+        x: point.x,
+        y: point.y,
+        ...DEFAULT_CARD,
+      };
+
+      draftRef.current = initialDraft;
+      setDraft(initialDraft);
     }
-    draftRef.current = nextDraft;
-    setDraft(nextDraft);
-  }
+    
+    
+    function handleCanvasPointerMove(event: React.PointerEvent) {
+      if (!creationStart.current) return;
+
+      const point = pointInCanvas(event);
+      const start = creationStart.current;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const canvasWidth = canvas.clientWidth;
+      const canvasHeight = canvas.clientHeight;
+
+      const constrainedX = Math.min(
+        canvasWidth,
+        Math.max(0, point.x)
+      );
+
+      const constrainedY = Math.min(
+        canvasHeight,
+        Math.max(TOP_CREATION_LIMIT, point.y)
+      );
+
+      const nextDraft = {
+        x: Math.max(
+          0,
+          Math.min(start.x, constrainedX)
+        ),
+
+        y: Math.max(
+          TOP_CREATION_LIMIT,
+          Math.min(start.y, constrainedY)
+        ),
+
+        width: Math.min(
+          Math.max(MIN_CARD_SIZE, Math.abs(constrainedX - start.x)),
+          canvasWidth - Math.min(start.x, constrainedX)
+        ),
+
+        height: Math.min(
+          Math.max(MIN_CARD_SIZE, Math.abs(constrainedY - start.y)),
+          canvasHeight - Math.min(start.y, constrainedY)
+        ),
+      };
+
+      if (
+        Math.abs(constrainedX - start.x) > 8 ||
+        Math.abs(constrainedY - start.y) > 8
+      ) {
+        didDragToCreate.current = true;
+      }
+
+      draftRef.current = nextDraft;
+      setDraft(nextDraft);
+    }
 
   function handleCanvasPointerUp(event: React.PointerEvent<HTMLElement>) {
+      setIsCreatingCard(false);
+      
     const pending = draftRef.current;
     creationStart.current = undefined;
     draftRef.current = undefined;
@@ -298,7 +418,7 @@ export function App() {
       }
     });
   }
-
+    
   async function addWorkspace() {
     if (workspaces.length >= 10) return;
     const workspace = await createWorkspace(`Space ${workspaces.length + 1}`);
@@ -307,6 +427,11 @@ export function App() {
     setMenuOpen(false);
   }
     async function setOnboarding(step: OnboardingStep) {
+        
+        if (step === 1) {
+          void minimizeOtherWindows();
+          void setOverlayMode(true, false);
+        }
       setOnboardingStep(step);
       await saveOnboarding(false, step);
     }
@@ -356,7 +481,7 @@ export function App() {
         </AnimatePresence>
       </header>
           <AnimatePresence>
-            {isFloatspaceLayer && (
+            {isFloatspaceLayer && !showStartupHint && (
               <motion.div
                 className="floatspace-overlay"
                 initial={{ opacity: 0 }}
@@ -366,8 +491,8 @@ export function App() {
               />
             )}
           </AnimatePresence>
-      <section
-        className="canvas"
+          <section
+            className={`canvas${isCreatingCard ? " is-creating-card" : ""}`}
         ref={canvasRef}
         onPointerDown={handleCanvasPointerDown}
         onPointerMove={handleCanvasPointerMove}
@@ -504,6 +629,53 @@ export function App() {
             )}
           </AnimatePresence>
       </section>
+        
+          {isFloatspaceLayer && activeWorkspace && (
+            <div
+               className={`workspace-label ${
+                 isEditingWorkspaceName ? "editing" : ""
+               }`}
+               onPointerDown={(event) => event.stopPropagation()}
+               onClick={() => {
+                 if (!isEditingWorkspaceName) {
+                   startEditingWorkspaceName();
+                 }
+               }}
+            >
+              {isEditingWorkspaceName ? (
+                <input
+                  className="workspace-label-input"
+                  value={workspaceNameDraft}
+                  autoFocus
+                  onFocus={(event) => event.currentTarget.select()}
+                  onChange={(event) => setWorkspaceNameDraft(event.target.value)}
+                  onBlur={() => void saveWorkspaceName()}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      void saveWorkspaceName();
+                    }
+
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setIsEditingWorkspaceName(false);
+                    }
+                  }}
+                />
+              ) : (
+                <span>
+                  {activeWorkspace.name || `SPACE ${activeWorkspace.slot}`}
+                </span>
+              )}
+            </div>
+          )}
+          
+          <AnimatePresence>
+            {showStartupHint && (
+              <StartupHint />
+            )}
+          </AnimatePresence>
+          
           {onboardingStep !== null && (
             <div className="onboarding-layer">
               <Onboarding step={onboardingStep} />
@@ -551,12 +723,22 @@ function CardView({
     const deleteStart = useRef<number | null>(null);
     const deleteAnimation = useRef<number | null>(null);
     
-  function begin(event: React.PointerEvent, mode: "move" | "resize") {
-    event.stopPropagation();
+    function begin(event: React.PointerEvent, mode: "move" | "resize") {
+      event.preventDefault();
+      event.stopPropagation();
+
       onActivate();
-    start.current = { x: event.clientX, y: event.clientY, card, latest: card, mode };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
+
+      start.current = {
+        x: event.clientX,
+        y: event.clientY,
+        card,
+        latest: card,
+        mode,
+      };
+
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
 
     // Hold to delete.
     function startDelete(event: React.PointerEvent) {
@@ -679,7 +861,10 @@ function CardView({
                   }}
           >
           <div className="card-background" />
-      <div className="card-handle" aria-label="Move card" onPointerDown={(event) => begin(event, "move")} onPointerMove={move} onPointerUp={finish} />
+      <div className="card-handle" aria-label="Move card"  onPointerDown={(event) => {
+          begin(event, "move");
+        }}
+                  onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}/>
                   
                   <textarea
                     ref={textareaRef}
@@ -698,15 +883,16 @@ function CardView({
                       onType?.();
                     }}
                   />
-                  
-                  <div className="resize-handle"
-                  aria-label="Resize card"
-                  onPointerDown={(event) => begin(event, "resize")}
-                  onPointerMove={move}
-                  onPointerUp={finish}
-                  onPointerCancel={finish}
+                  <div
+                    className="resize-handle"
+                    aria-label="Resize card"
+                    onPointerDown={(event) => {
+                      begin(event, "resize");
+                    }}
+                    onPointerMove={move}
+                    onPointerUp={finish}
+                    onPointerCancel={finish}
                   />
-                  
                   <button
                     className="delete-card"
                     aria-label="Hold to delete card"
