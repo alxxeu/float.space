@@ -114,6 +114,27 @@ export function App() {
           return () => window.removeEventListener("keydown", handleResetOnboardingHotkey);
         }, []);
     
+    useEffect(() => {
+      function handleOnboardingEnter(event: KeyboardEvent) {
+        if (
+          onboardingStepRef.current === 5 &&
+          event.key === "Enter"
+        ) {
+          event.preventDefault();
+          void completeOnboarding();
+        }
+      }
+
+      window.addEventListener("keydown", handleOnboardingEnter);
+
+      return () => {
+        window.removeEventListener(
+          "keydown",
+          handleOnboardingEnter
+        );
+      };
+    }, []);
+    
   const canvasRef = useRef<HTMLElement>(null);
   const creationStart = useRef<{ x: number; y: number }>();
   const draftRef = useRef<DraftCard>();
@@ -176,7 +197,7 @@ export function App() {
 
         const safeStep = Math.max(
           1,
-          Math.min(4, step)
+          Math.min(5, step)
         ) as OnboardingStep;
 
           setIsFloatspaceLayer(true);
@@ -228,7 +249,7 @@ export function App() {
                     slot >= 2 &&
                     slot <= 9
                 ) {
-                  void completeOnboarding();
+                    void setOnboarding(5);
                 }
 
                 return current;

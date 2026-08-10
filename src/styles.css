@@ -519,6 +519,154 @@ button, input, textarea { font: inherit; }
   text-align: center;
 }
 
+/* 5 step */
+
+.onboarding-finish-hint {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+  min-height: 50px;
+  margin-top: 20px;
+  padding: 20px 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.onboarding-finish-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.onboarding-finish-title {
+  color: rgb(255 255 255 / 90%);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-finish-subtitle {
+  color: rgb(255 255 255 / 34%);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.onboarding-enter-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-left: 32px;
+}
+
+.onboarding-enter-icon img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.integration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  width: 100%;
+  margin-top: 26px;
+  padding: 18px 20px;
+
+  box-sizing: border-box;
+
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 10px;
+}
+
+.integration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.integration-title {
+  color: rgb(255 255 255 / 90%);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.integration-description {
+  color: rgb(255 255 255 / 34%);
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.integration-button {
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+
+  min-width: 76px;
+  height: 34px;
+  margin-left: 20px;
+  padding: 0 12px;
+
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 9px;
+
+  background: rgb(255 255 255 / 9%);
+  color: rgb(255 255 255 / 78%);
+
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.integration-button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 14%);
+  border-color: rgb(255 255 255 / 16%);
+}
+
+.integration-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.integration-button:disabled {
+  cursor: default;
+}
+
+.integration-button.enabled {
+  background: rgb(255 255 255 / 6%);
+  color: rgb(255 255 255 / 42%);
+}
+
+.integration-check {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 5 step */
+/* onboarding */
+
 /* Startup hint*/
 
 .startup-hint {
@@ -606,3 +754,4 @@ button, input, textarea { font: inherit; }
   -webkit-user-select: none;
   touch-action: none;
 }
+

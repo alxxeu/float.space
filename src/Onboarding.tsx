@@ -1,4 +1,10 @@
 import { motion } from "framer-motion";
+import {
+  enable,
+  isEnabled,
+} from "@tauri-apps/plugin-autostart";
+import enterIcon from "./assets/enter.svg";
+import { useEffect, useState } from "react";
 
 export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
 
@@ -9,7 +15,7 @@ type OnboardingProps = {
 const content = {
   1: {
     eyebrow: "FLOATSPACE",
-    title: "Give your thoughts a place",
+    title: "Give your thoughts a place.",
     text: "Your desktop is divided into Spaces. Press to open your first one.",
     keys: ["⌥", "2"],
   },
@@ -27,16 +33,47 @@ const content = {
   },
   4: {
     eyebrow: "SPACES",
-    title: "Keep things separate",
+    title: "Keep things separate.",
     text: "Create up to 8 Spaces for different ideas, projects, and thoughts.",
     keys: ["⌥", "2-9"],
   },
+    5: {
+      eyebrow: "ONE LAST THING",
+      title: "Set up Floatspace.",
+      text: "A few permissions to unlock all features.",
+      keys: null,
+    },
 } as const;
 
 export function Onboarding({
   step,
 }: OnboardingProps) {
+    const [autostartEnabled, setAutostartEnabled] = useState(false);
+    const [autostartLoading, setAutostartLoading] = useState(false);
   const current = content[step];
+    
+    useEffect(() => {
+      if (step !== 5) return;
+
+      void isEnabled().then(setAutostartEnabled);
+    }, [step]);
+    
+    async function handleEnableAutostart() {
+      try {
+        setAutostartLoading(true);
+
+        await enable();
+
+        const enabled = await isEnabled();
+        setAutostartEnabled(enabled);
+
+        console.log("FLOATSPACE AUTOSTART:", enabled);
+      } catch (error) {
+        console.error("Failed to enable autostart:", error);
+      } finally {
+        setAutostartLoading(false);
+      }
+    }
 
   return (
     <motion.div
@@ -59,7 +96,7 @@ export function Onboarding({
         }}
       >
         <div className="onboarding-progress">
-          {[1, 2, 3, 4].map((index) => (
+          {[1, 2, 3, 4, 5].map((index) => (
             <span
               key={index}
               className={`onboarding-dot ${index === step ? "active" : ""}`}
@@ -79,27 +116,58 @@ export function Onboarding({
           {current.text}
         </div>
 
-        {current.keys && (
-          <div className="onboarding-keys">
-            {current.keys.map((key: string, index: number) => (
-              <kbd key={index} className="onboarding-key">
-                {key}
-              </kbd>
-            ))}
-          </div>
-        )}
+          {step === 5 && (
+            <>
+              <div className="integration-item">
+                <div className="integration-info">
+                  <div className="integration-title">
+                    Launch at login
+                  </div>
 
-        {step === 1 && (
-          <div className="onboarding-hint">
-            Drag anywhere on the desktop
-          </div>
-        )}
+                  <div className="integration-description">
+                    Start Floatspace automatically when you log in.
+                  </div>
+                </div>
 
-        {step === 2 && (
-          <div className="onboarding-hint">
-            Your cursor is already in the note
-          </div>
-        )}
+                <button
+                  type="button"
+                  className={`integration-button ${
+                    autostartEnabled ? "enabled" : ""
+                  }`}
+                  onClick={() => void handleEnableAutostart()}
+                  disabled={autostartLoading || autostartEnabled}
+                >
+                  <span className="integration-button-text">
+                    {autostartEnabled
+                      ? "Enabled"
+                      : autostartLoading
+                        ? "Enabling..."
+                        : "Enable"}
+                  </span>
+
+                  {autostartEnabled && (
+                    <span className="integration-check">✓</span>
+                  )}
+                </button>
+              </div>
+
+              <div className="onboarding-finish-hint">
+                <div className="onboarding-finish-copy">
+                  <div className="onboarding-finish-title">
+                    Or just press Enter to finish
+                  </div>
+
+                  <div className="onboarding-finish-subtitle">
+                    You can set this up later in Settings.
+                  </div>
+                </div>
+
+                <div className="onboarding-enter-icon">
+                  <img src={enterIcon} alt="" />
+                </div>
+              </div>
+            </>
+          )}
       </motion.div>
     </motion.div>
   );
