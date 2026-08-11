@@ -562,8 +562,8 @@ export function App() {
         setFocusCardId(created.id);
         setCards((current) => [...current, created]);
 
-        if (onboardingStep === 1) {
-          void setOnboarding(2);
+        if (onboardingStep === 2) {
+          void setOnboarding(3);
         }
       });
     }
