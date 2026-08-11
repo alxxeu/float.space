@@ -1,7 +1,10 @@
 mod native_desktop;
 mod storage;
 
-use std::sync::Mutex;
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
 
 use storage::{Card, Database, NewCard, Workspace};
 use tauri::{Emitter, Manager, State};
@@ -147,6 +150,11 @@ fn set_overlay_mode(
     native_desktop::apply_mode(&window, mode).map_err(|error| error.to_string())
 }
 
+#[tauri::command]
+fn quit_app() {
+    std::process::exit(0);
+}
+
 pub fn run() {
     let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
         .with_shortcuts([
@@ -170,45 +178,76 @@ pub fn run() {
             let shortcut = shortcut.clone();
 
             let _ = app.run_on_main_thread(move || {
-                let Some(window) = app_handle.get_webview_window("main") else {
+                let Some(window) =
+                    app_handle.get_webview_window("main")
+                else {
                     eprintln!("Floatspace main window is unavailable");
                     return;
                 };
 
                 // ⌥1 = normal macOS Desktop
-                if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
-                    let state = app_handle.state::<DesktopLayerState>();
+                if shortcut
+                    == Shortcut::new(
+                        Some(Modifiers::ALT),
+                        Code::Digit1,
+                    )
+                {
+                    let state =
+                        app_handle.state::<DesktopLayerState>();
 
-                    let needs_desktop_mode = match state.mode.lock() {
-                        Ok(mut mode) => {
-                            if *mode == native_desktop::Mode::Desktop {
-                                false
-                            } else {
-                                *mode = native_desktop::Mode::Desktop;
-                                true
+                    let needs_desktop_mode =
+                        match state.mode.lock() {
+                            Ok(mut mode) => {
+                                if *mode
+                                    == native_desktop::Mode::Desktop
+                                {
+                                    false
+                                } else {
+                                    *mode =
+                                        native_desktop::Mode::Desktop;
+                                    true
+                                }
                             }
-                        }
-                        Err(_) => {
-                            eprintln!("Floatspace desktop layer state is unavailable");
-                            return;
-                        }
-                    };
+                            Err(_) => {
+                                eprintln!(
+                                    "Floatspace desktop layer state \
+                                     is unavailable"
+                                );
+                                return;
+                            }
+                        };
 
                     if needs_desktop_mode {
                         if let Err(error) =
-                            native_desktop::apply_mode(&window, native_desktop::Mode::Desktop)
+                            native_desktop::apply_mode(
+                                &window,
+                                native_desktop::Mode::Desktop,
+                            )
                         {
-                            eprintln!("Floatspace could not enter Desktop mode: {error}");
+                            eprintln!(
+                                "Floatspace could not enter Desktop \
+                                 mode: {error}"
+                            );
                             return;
                         }
 
-                        if let Err(error) = native_desktop::set_desktop_icons_visible(true) {
-                            eprintln!("Floatspace could not show desktop icons: {error}");
+                        if let Err(error) =
+                            native_desktop::set_desktop_icons_visible(true)
+                        {
+                            eprintln!(
+                                "Floatspace could not show desktop \
+                                 icons: {error}"
+                            );
                         }
                     }
 
-                    if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
-                        eprintln!("Floatspace could not switch to Desktop: {error}");
+                    if let Err(error) =
+                        app_handle.emit("switch-workspace", 1u8)
+                    {
+                        eprintln!(
+                            "Floatspace could not switch to Desktop: \
+                             {error}"
+                        );
                     }
 
                     return;
@@ -216,49 +255,129 @@ pub fn run() {
 
                 // ⌥2–⌥9 = Floatspace spaces
                 let slot = match shortcut {
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 2,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 3,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit4) => 4,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit5) => 5,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit6) => 6,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit7) => 7,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit8) => 8,
-                    s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit9) => 9,
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit2,
+                        ) =>
+                    {
+                        2
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit3,
+                        ) =>
+                    {
+                        3
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit4,
+                        ) =>
+                    {
+                        4
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit5,
+                        ) =>
+                    {
+                        5
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit6,
+                        ) =>
+                    {
+                        6
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit7,
+                        ) =>
+                    {
+                        7
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit8,
+                        ) =>
+                    {
+                        8
+                    }
+                    s if s
+                        == Shortcut::new(
+                            Some(Modifiers::ALT),
+                            Code::Digit9,
+                        ) =>
+                    {
+                        9
+                    }
                     _ => return,
                 };
 
-                let state = app_handle.state::<DesktopLayerState>();
+                let state =
+                    app_handle.state::<DesktopLayerState>();
 
-                let needs_workspace_mode = match state.mode.lock() {
-                    Ok(mut mode) => {
-                        if *mode == native_desktop::Mode::Workspace {
-                            false
-                        } else {
-                            *mode = native_desktop::Mode::Workspace;
-                            true
+                let needs_workspace_mode =
+                    match state.mode.lock() {
+                        Ok(mut mode) => {
+                            if *mode
+                                == native_desktop::Mode::Workspace
+                            {
+                                false
+                            } else {
+                                *mode =
+                                    native_desktop::Mode::Workspace;
+                                true
+                            }
                         }
-                    }
-                    Err(_) => {
-                        eprintln!("Floatspace desktop layer state is unavailable");
-                        return;
-                    }
-                };
+                        Err(_) => {
+                            eprintln!(
+                                "Floatspace desktop layer state \
+                                 is unavailable"
+                            );
+                            return;
+                        }
+                    };
 
                 if needs_workspace_mode {
                     if let Err(error) =
-                        native_desktop::apply_mode(&window, native_desktop::Mode::Workspace)
+                        native_desktop::apply_mode(
+                            &window,
+                            native_desktop::Mode::Workspace,
+                        )
                     {
-                        eprintln!("Floatspace could not enter Workspace mode: {error}");
+                        eprintln!(
+                            "Floatspace could not enter Workspace \
+                             mode: {error}"
+                        );
                         return;
                     }
 
-                    if let Err(error) = native_desktop::set_desktop_icons_visible(false) {
-                        eprintln!("Floatspace could not hide desktop icons: {error}");
+                    if let Err(error) =
+                        native_desktop::set_desktop_icons_visible(false)
+                    {
+                        eprintln!(
+                            "Floatspace could not hide desktop \
+                             icons: {error}"
+                        );
                     }
                 }
 
-                if let Err(error) = app_handle.emit("switch-workspace", slot) {
-                    eprintln!("Floatspace could not switch workspace: {error}");
+                if let Err(error) =
+                    app_handle.emit("switch-workspace", slot)
+                {
+                    eprintln!(
+                        "Floatspace could not switch workspace: \
+                         {error}"
+                    );
                 }
             });
         })
@@ -269,20 +388,56 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(shortcut_plugin)
         .setup(|app| {
+
+            #[cfg(target_os = "macos")]
+            {
+                use objc2::MainThreadMarker;
+                use objc2_app_kit::{
+                    NSApplication,
+                    NSApplicationActivationPolicy,
+                };
+
+                let mtm =
+                    MainThreadMarker::new()
+                        .expect("Must be on main thread");
+
+                let app_instance =
+                    NSApplication::sharedApplication(mtm);
+
+                app_instance.setActivationPolicy(
+                    NSApplicationActivationPolicy::Accessory,
+                );
+            }
+
             let data_dir = app.path().app_data_dir()?;
+
             std::fs::create_dir_all(&data_dir)?;
-            let database = Database::open(data_dir.join("floatspace.sqlite"))?;
+
+            let database =
+                Database::open(
+                    data_dir.join("floatspace.sqlite"),
+                )?;
+
             app.manage(AppState {
                 database: Mutex::new(database),
             });
+
             app.manage(DesktopLayerState {
-                mode: Mutex::new(native_desktop::Mode::Desktop),
+                mode: Mutex::new(
+                    native_desktop::Mode::Desktop,
+                ),
             });
+
             let window = app
                 .get_webview_window("main")
-                .ok_or("The main Floatspace window is unavailable")?;
+                .ok_or(
+                    "The main Floatspace window is unavailable",
+                )?;
+
             native_desktop::configure(&window)?;
+
             window.show()?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -296,7 +451,8 @@ pub fn run() {
             update_card,
             delete_card,
             load_onboarding,
-            save_onboarding
+            save_onboarding,
+            quit_app
         ])
         .run(tauri::generate_context!())
         .expect("error while running Floatspace");

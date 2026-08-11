@@ -1,6 +1,11 @@
 import { motion } from "framer-motion";
 
-export function StartupHint() {
+type StartupHintProps = {
+  title: string;
+  text: string;
+};
+
+export function StartupHint({ title, text }: StartupHintProps) {
   return (
     <motion.div
       className="startup-hint"
@@ -26,12 +31,10 @@ export function StartupHint() {
         mass: 0.8,
       }}
     >
-      <div className="startup-hint-title">
-        Floatspace ready
-      </div>
+      {title}
 
       <div className="startup-hint-text">
-        Press ⌥ + 2-9 to enter your Space
+        {text}
       </div>
     </motion.div>
   );

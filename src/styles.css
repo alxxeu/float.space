@@ -755,3 +755,15 @@ button, input, textarea { font: inherit; }
   touch-action: none;
 }
 
+.card-placement-preview {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+
+  
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+  filter: blur(1px);
+
+  z-index: 9999;
+}
