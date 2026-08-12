@@ -55,7 +55,8 @@ const DEFAULT_CARD = {
   height: 120,
 };
 
-const TOP_CREATION_LIMIT = 38;
+const TOP_CREATION_LIMIT = 73;
+const CANVAS_SIDE_PADDING = 24;
 
 function snapCardSize(value: number) {
   return Math.max(
@@ -114,9 +115,17 @@ export function App() {
       setIsEditingWorkspaceName(false);
     };
   const [isFloatspaceLayer, setIsFloatspaceLayer] = useState(false);
+    const [edgeHintPreview, setEdgeHintPreview] = useState<{
+      edge: "top" | "left" | "right" | "bottom";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    } | null>(null);
   const [onboardingStep, setOnboardingStep] =
       useState<OnboardingStep | null>(null);
   const onboardingStepRef = useRef<OnboardingStep | null>(null);
+    
 
     useEffect(() => {
       onboardingStepRef.current = onboardingStep;
@@ -416,14 +425,15 @@ export function App() {
       const rawPoint = pointInCanvas(event);
 
       const point = {
-        x: Math.min(
-          Math.max(0, rawPoint.x),
-          canvas.clientWidth - MIN_CARD_SIZE
-        ),
-        y: Math.min(
-          Math.max(TOP_CREATION_LIMIT, rawPoint.y),
-          canvas.clientHeight - MIN_CARD_SIZE
-        ),
+          x: Math.min(
+            Math.max(CANVAS_SIDE_PADDING, rawPoint.x),
+            canvas.clientWidth - CANVAS_SIDE_PADDING - MIN_CARD_SIZE
+          ),
+
+          y: Math.min(
+            Math.max(TOP_CREATION_LIMIT, rawPoint.y),
+            canvas.clientHeight - CANVAS_SIDE_PADDING - MIN_CARD_SIZE
+          ),
       };
 
       creationStart.current = point;
@@ -455,35 +465,35 @@ export function App() {
       const canvasWidth = canvas.clientWidth;
       const canvasHeight = canvas.clientHeight;
 
-      const constrainedX = Math.min(
-        canvasWidth,
-        Math.max(0, point.x)
-      );
+        const constrainedX = Math.min(
+          canvasWidth - CANVAS_SIDE_PADDING,
+          Math.max(CANVAS_SIDE_PADDING, point.x)
+        );
 
-      const constrainedY = Math.min(
-        canvasHeight,
-        Math.max(TOP_CREATION_LIMIT, point.y)
-      );
+        const constrainedY = Math.min(
+          canvasHeight - CANVAS_SIDE_PADDING,
+          Math.max(TOP_CREATION_LIMIT, point.y)
+        );
 
       const nextDraft = {
-        x: Math.max(
-          0,
-          Math.min(start.x, constrainedX)
-        ),
+          x: Math.max(
+            CANVAS_SIDE_PADDING,
+            Math.min(start.x, constrainedX)
+          ),
 
-        y: Math.max(
-          TOP_CREATION_LIMIT,
-          Math.min(start.y, constrainedY)
-        ),
-
+          y: Math.max(
+            TOP_CREATION_LIMIT,
+            Math.min(start.y, constrainedY)
+          ),
+          
         width: Math.min(
           Math.max(MIN_CARD_SIZE, Math.abs(constrainedX - start.x)),
-          canvasWidth - Math.min(start.x, constrainedX)
+          canvasWidth - CANVAS_SIDE_PADDING - Math.min(start.x, constrainedX)
         ),
 
         height: Math.min(
           Math.max(MIN_CARD_SIZE, Math.abs(constrainedY - start.y)),
-          canvasHeight - Math.min(start.y, constrainedY)
+          canvasHeight - CANVAS_SIDE_PADDING - Math.min(start.y, constrainedY)
         ),
       };
 
@@ -517,15 +527,15 @@ export function App() {
       const snappedWidth = snapCardSize(pending.width);
       const snappedHeight = snapCardSize(pending.height);
 
-      const maxWidth = Math.max(
-        MIN_CARD_SIZE,
-        (canvas?.width ?? Infinity) - pending.x
-      );
+        const maxWidth = Math.max(
+          MIN_CARD_SIZE,
+          (canvas?.width ?? Infinity) - CANVAS_SIDE_PADDING - pending.x
+        );
 
-      const maxHeight = Math.max(
-        MIN_CARD_SIZE,
-        (canvas?.height ?? Infinity) - pending.y
-      );
+        const maxHeight = Math.max(
+          MIN_CARD_SIZE,
+          (canvas?.height ?? Infinity) - CANVAS_SIDE_PADDING - pending.y
+        );
 
       const finalWidth = Math.min(
         snappedWidth,
@@ -643,6 +653,24 @@ export function App() {
         onPointerUp={handleCanvasPointerUp}
           onPointerCancel={handleCanvasPointerUp}
       >
+          <AnimatePresence>
+            {edgeHintPreview && (
+              <motion.div
+                className={`canvas-edge-hint canvas-edge-hint-${edgeHintPreview.edge}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.35 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                style={{
+                  left: edgeHintPreview.x,
+                  top: edgeHintPreview.y,
+                  width: edgeHintPreview.width,
+                  height: edgeHintPreview.height,
+                }}
+              />
+            )}
+          </AnimatePresence>
+          
           {cards.length === 0 && activeWorkspace && (
             <motion.div
               className="empty-space-note"
@@ -687,6 +715,7 @@ export function App() {
                 card={card}
                 cards={cards}
                 setPlacementPreview={setPlacementPreview}
+                setEdgeHint={setEdgeHintPreview}
                 autoFocus={card.id === focusCardId}
                 focusedCardId={focusedCardId}
                 setFocusedCardId={setFocusedCardId}

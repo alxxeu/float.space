@@ -1,4 +1,3 @@
-
 import {
     useEffect,
     useRef,
@@ -10,10 +9,14 @@ import {
     motion
 } from "framer-motion";
 
+import type { Card } from "./domain";
+
 const MIN_CARD_SIZE = 120;
 const CARD_SIZE_STEP = 60;
-const TOP_CREATION_LIMIT = 38;
+const TOP_CREATION_LIMIT = 73;
+const CANVAS_SIDE_PADDING = 24;
 const DELETE_HOLD_TIME = 400;
+
 
 function snapCardSize(value: number) {
   return Math.max(
@@ -28,7 +31,7 @@ function findPlacementPreview(
   canvasWidth: number,
   canvasHeight: number
                               ) {
-    const GAP = 12;
+    const GAP = 16;
     const ACTIVATION_DISTANCE = 45;
     
     let best: {
@@ -58,9 +61,9 @@ function findPlacementPreview(
                 
                 if (
                     distance <= ACTIVATION_DISTANCE &&
-                    x + card.width <= canvasWidth &&
+                    x + card.width <= canvasWidth - CANVAS_SIDE_PADDING &&
                     y >= TOP_CREATION_LIMIT &&
-                    y + card.height <= canvasHeight
+                    y + card.height <= canvasHeight - CANVAS_SIDE_PADDING
                     ) {
                         if (!best || distance < best.distance) {
                             best = { distance, x, y };
@@ -88,9 +91,9 @@ function findPlacementPreview(
                 
                 if (
                     distance <= ACTIVATION_DISTANCE &&
-                    x >= 0 &&
+                    x >= CANVAS_SIDE_PADDING &&
                     y >= TOP_CREATION_LIMIT &&
-                    y + card.height <= canvasHeight
+                    y + card.height <= canvasHeight - CANVAS_SIDE_PADDING
                     ) {
                         if (!best || distance < best.distance) {
                             best = { distance, x, y };
@@ -118,9 +121,9 @@ function findPlacementPreview(
                 
                 if (
                     distance <= ACTIVATION_DISTANCE &&
-                    x >= 0 &&
-                    x + card.width <= canvasWidth &&
-                    y + card.height <= canvasHeight
+                    x >= CANVAS_SIDE_PADDING &&
+                    x + card.width <= canvasWidth - CANVAS_SIDE_PADDING &&
+                    y + card.height <= canvasHeight - CANVAS_SIDE_PADDING
                     ) {
                         if (!best || distance < best.distance) {
                             best = { distance, x, y };
@@ -148,8 +151,8 @@ function findPlacementPreview(
                 
                 if (
                     distance <= ACTIVATION_DISTANCE &&
-                    x >= 0 &&
-                    x + card.width <= canvasWidth &&
+                    x >= CANVAS_SIDE_PADDING &&
+                    x + card.width <= canvasWidth - CANVAS_SIDE_PADDING &&
                     y >= TOP_CREATION_LIMIT
                     ) {
                         if (!best || distance < best.distance) {
@@ -182,7 +185,8 @@ export function CardView({
     onActivate,
     onType,
     zIndex,
-    setPlacementPreview
+    setPlacementPreview,
+    setEdgeHint
 }: {
     card: Card;
     cards: Card[];
@@ -202,6 +206,9 @@ export function CardView({
                               height: number;
                           } | null
                           ) => void;
+    setEdgeHint: (
+      edge: "top" | "left" | "right" | "bottom" | null
+    ) => void;
 }) {
     const start = useRef<{
         x: number;
@@ -212,6 +219,37 @@ export function CardView({
     }>();
     
     const textareaRef = useRef<HTMLDivElement | null>(null);
+    const firstLineBoldRef = useRef(false);
+
+    useEffect(() => {
+      const element = textareaRef.current;
+
+      if (!element) return;
+
+      element.innerHTML = card.text || "";
+
+      if (autoFocus && !card.text) {
+        firstLineBoldRef.current = true;
+
+        requestAnimationFrame(() => {
+          element.focus();
+
+          // Ставим курсор в начало
+          const selection = window.getSelection();
+          const range = document.createRange();
+
+          range.selectNodeContents(element);
+          range.collapse(false);
+
+          selection?.removeAllRanges();
+          selection?.addRange(range);
+
+          // Включаем bold для нового вводимого текста
+          document.execCommand("bold", false, "true");
+        });
+      }
+    }, [card.id]);
+    
     const [isActive, setIsActive] = useState(false);
     
     const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -219,17 +257,6 @@ export function CardView({
     const [deleteProgress, setDeleteProgress] = useState(0);
     const deleteStart = useRef<number | null>(null);
     const deleteAnimation = useRef<number | null>(null);
-    
-    useEffect(() => {
-      const element = textareaRef.current;
-
-      if (!element) return;
-
-      if (element.innerHTML !== card.text) {
-        element.innerHTML = card.text || "";
-      }
-    }, [card.id, card.text]);
-
     
     function begin(event: React.PointerEvent, mode: "move" | "resize") {
         event.preventDefault();
@@ -306,101 +333,191 @@ export function CardView({
     }
     
     function move(event: React.PointerEvent) {
-        event.stopPropagation();
-        
-        const operation = start.current;
-        if (!operation) return;
-        
-        const canvas = event.currentTarget
+      event.stopPropagation();
+
+      const operation = start.current;
+      if (!operation) return;
+
+      const canvas = event.currentTarget
         .closest(".canvas")
         ?.getBoundingClientRect();
-        
-        if (!canvas) return;
-        
-        const dx = event.clientX - operation.x;
-        const dy = event.clientY - operation.y;
-        
-        if (operation.mode === "move") {
-            const maxX = Math.max(
-                                  0,
-                                  canvas.width - operation.card.width
-                                  );
-            
-            const maxY = Math.max(
-                                  TOP_CREATION_LIMIT,
-                                  canvas.height - operation.card.height
-                                  );
-            
-            const next = {
-                ...operation.card,
-                
-                x: Math.min(
-                            maxX,
-                            Math.max(0, operation.card.x + dx)
-                            ),
-                
-                y: Math.min(
-                            maxY,
-                            Math.max(TOP_CREATION_LIMIT, operation.card.y + dy)
-                            ),
-            };
-            
-            operation.latest = next;
-            
-            onChange(next);
-            
-            const preview = findPlacementPreview(
-                                                 next,
-                                                 cards,
-                                                 canvas.width,
-                                                 canvas.height
-                                                 );
-            
-            setPlacementPreview(preview);
-            
-            return;
-        }
-        
-        // resize
-        const maxWidth = Math.max(
-                                  MIN_CARD_SIZE,
-                                  canvas.width - operation.card.x
-                                  );
-        
-        const maxHeight = Math.max(
-                                   MIN_CARD_SIZE,
-                                   canvas.height - operation.card.y
-                                   );
-        
+
+      if (!canvas) return;
+
+      const dx = event.clientX - operation.x;
+      const dy = event.clientY - operation.y;
+
+      if (operation.mode === "move") {
+        const maxX = Math.max(
+          CANVAS_SIDE_PADDING,
+          canvas.width - CANVAS_SIDE_PADDING - operation.card.width
+        );
+
+        const maxY = Math.max(
+          TOP_CREATION_LIMIT,
+          canvas.height - CANVAS_SIDE_PADDING - operation.card.height
+        );
+
         const next = {
-            ...operation.card,
-            
-            width: Math.min(
-                            maxWidth,
-                            Math.max(
-                                     MIN_CARD_SIZE,
-                                     operation.card.width + dx
-                                     )
-                            ),
-            
-            height: Math.min(
-                             maxHeight,
-                             Math.max(
-                                      MIN_CARD_SIZE,
-                                      operation.card.height + dy
-                                      )
-                             ),
+          ...operation.card,
+
+          x: Math.min(
+            maxX,
+            Math.max(
+              CANVAS_SIDE_PADDING,
+              operation.card.x + dx
+            )
+          ),
+
+          y: Math.min(
+            maxY,
+            Math.max(
+              TOP_CREATION_LIMIT,
+              operation.card.y + dy
+            )
+          ),
         };
-        
+
         operation.latest = next;
         onChange(next);
-        
-        setPlacementPreview(null);
+
+          const EDGE_HINT_DISTANCE = 35;
+
+          const topDistance = next.y - TOP_CREATION_LIMIT;
+          const leftDistance = next.x - CANVAS_SIDE_PADDING;
+
+          const rightDistance =
+            canvas.width -
+            CANVAS_SIDE_PADDING -
+            next.x -
+            next.width;
+
+          const bottomDistance =
+            canvas.height -
+            CANVAS_SIDE_PADDING -
+            next.y -
+            next.height;
+
+          const distances = [
+            {
+              edge: "top" as const,
+              distance: topDistance,
+            },
+            {
+              edge: "left" as const,
+              distance: leftDistance,
+            },
+            {
+              edge: "right" as const,
+              distance: rightDistance,
+            },
+            {
+              edge: "bottom" as const,
+              distance: bottomDistance,
+            },
+          ];
+
+          const closest = distances.reduce((best, current) =>
+            current.distance < best.distance ? current : best
+          );
+
+          if (closest.distance <= EDGE_HINT_DISTANCE) {
+            if (closest.edge === "top") {
+              setEdgeHint({
+                edge: "top",
+                x: next.x,
+                y: TOP_CREATION_LIMIT,
+                width: next.width,
+                height: 3,
+              });
+            }
+
+            if (closest.edge === "bottom") {
+              setEdgeHint({
+                edge: "bottom",
+                x: next.x,
+                y: canvas.height - CANVAS_SIDE_PADDING,
+                width: next.width,
+                height: 3,
+              });
+            }
+
+            if (closest.edge === "left") {
+              setEdgeHint({
+                edge: "left",
+                x: CANVAS_SIDE_PADDING,
+                y: next.y,
+                width: 3,
+                height: next.height,
+              });
+            }
+
+            if (closest.edge === "right") {
+              setEdgeHint({
+                edge: "right",
+                x: canvas.width - CANVAS_SIDE_PADDING,
+                y: next.y,
+                width: 3,
+                height: next.height,
+              });
+            }
+          } else {
+            setEdgeHint(null);
+          }
+          
+        const preview = findPlacementPreview(
+          next,
+          cards,
+          canvas.width,
+          canvas.height
+        );
+
+        setPlacementPreview(preview);
+
+        return;
+      }
+
+      // resize
+      const maxWidth = Math.max(
+        MIN_CARD_SIZE,
+        canvas.width - CANVAS_SIDE_PADDING - operation.card.x
+      );
+
+      const maxHeight = Math.max(
+        MIN_CARD_SIZE,
+        canvas.height - CANVAS_SIDE_PADDING - operation.card.y
+      );
+
+      const next = {
+        ...operation.card,
+
+        width: Math.min(
+          maxWidth,
+          Math.max(
+            MIN_CARD_SIZE,
+            operation.card.width + dx
+          )
+        ),
+
+        height: Math.min(
+          maxHeight,
+          Math.max(
+            MIN_CARD_SIZE,
+            operation.card.height + dy
+          )
+        ),
+      };
+
+      operation.latest = next;
+      onChange(next);
+
+      setPlacementPreview(null);
     }
     
     function finish(event: React.PointerEvent) {
         const operation = start.current;
         if (!operation) return;
+        setEdgeHint(null);
         
         const canvas = event.currentTarget
         .closest(".canvas")
@@ -516,13 +633,19 @@ export function CardView({
               autoFocus={autoFocus}
               spellCheck={false}
               aria-label="Card text"
+            
+            onPointerDown={(event) => {
+                event.stopPropagation();
+            }}
               data-placeholder={
                 isActive && !card.text ? "Write something..." : ""
               }
-              onFocus={() => {
-                setFocusedCardId(card.id);
-                onActivate();
-              }}
+                
+            onFocus={() => {
+              setFocusedCardId(card.id);
+              onActivate();
+            }}
+            
               onInput={(event) => {
                 const html = event.currentTarget.innerHTML;
 
@@ -533,25 +656,41 @@ export function CardView({
 
                 onType?.();
               }}
-              onKeyDown={(event) => {
-                if (event.metaKey && event.key.toLowerCase() === "b") {
-                  event.preventDefault();
-                  document.execCommand("bold");
-                  return;
-                }
+            onKeyDown={(event) => {
+              if (
+                event.key === "Enter" &&
+                firstLineBoldRef.current
+              ) {
+                event.preventDefault();
 
-                if (event.metaKey && event.key.toLowerCase() === "i") {
-                  event.preventDefault();
-                  document.execCommand("italic");
-                  return;
-                }
+                document.execCommand("insertParagraph");
 
-                if (event.metaKey && event.key.toLowerCase() === "u") {
-                  event.preventDefault();
-                  document.execCommand("underline");
-                  return;
-                }
-              }}
+                // Выключаем bold уже после создания новой строки
+                document.execCommand("bold", false, "false");
+
+                firstLineBoldRef.current = false;
+
+                return;
+              }
+
+              if (event.metaKey && event.key.toLowerCase() === "b") {
+                event.preventDefault();
+                document.execCommand("bold");
+                return;
+              }
+
+              if (event.metaKey && event.key.toLowerCase() === "i") {
+                event.preventDefault();
+                document.execCommand("italic");
+                return;
+              }
+
+              if (event.metaKey && event.key.toLowerCase() === "u") {
+                event.preventDefault();
+                document.execCommand("underline");
+                return;
+              }
+            }}
               onBlur={() => setIsActive(false)}
             />
 
