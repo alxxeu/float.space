@@ -646,16 +646,20 @@ export function CardView({
               onActivate();
             }}
             
-              onInput={(event) => {
-                const html = event.currentTarget.innerHTML;
+            onInput={(event) => {
+              const html = event.currentTarget.innerHTML;
+              const text = event.currentTarget.textContent?.trim() ?? "";
 
-                onChange({
-                  ...card,
-                  text: html,
-                });
+              onChange({
+                ...card,
+                text: html,
+              });
 
+              if (text.length > 0) {
                 onType?.();
-              }}
+              }
+            }}
+            
             onKeyDown={(event) => {
               if (
                 event.key === "Enter" &&

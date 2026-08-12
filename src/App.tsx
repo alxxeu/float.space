@@ -568,6 +568,7 @@ export function App() {
         setCards((current) => [...current, created]);
 
         if (onboardingStep === 2) {
+            console.log("ONBOARDING: 2 → 3");
           void setOnboarding(3);
         }
       });
@@ -719,11 +720,16 @@ export function App() {
                 autoFocus={card.id === focusCardId}
                 focusedCardId={focusedCardId}
                 setFocusedCardId={setFocusedCardId}
+                                  
                                   onType={() => {
-                                                      if (onboardingStep === 3) {
-                                                        void setOnboarding(4);
-                                                      }
-                                                  }}
+                                    console.log("ONBOARDING: onType called, current step =", onboardingStep);
+
+                                    if (onboardingStep === 3) {
+                                      console.log("ONBOARDING: 3 → 4");
+                                      void setOnboarding(4);
+                                    }
+                                  }}
+                                  
                   onChange={changeCard}
                   onActivate={() => {
                       
