@@ -184,41 +184,6 @@ button, input, textarea { font: inherit; }
   opacity: 0.4;
 }
 
-.empty-space-name-input {
-  box-sizing: border-box;
-
-  width: auto;
-  min-width: 40px;
-  max-width: 300px;
-
-  margin-bottom: 12px;
-  padding: 2px 6px;
-
-  border: none;
-  border-radius: 3px;
-  outline: none;
-
-  background: rgba(255, 255, 255, 0.08);
-
-  color: #fff;
-  opacity: 0.4;
-
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 1000;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-align: center;
-
-  caret-color: #fff;
-}
-
-.empty-space-name-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
 .empty-space-slot {
   display: inline-block;
   margin-bottom: 12px;
@@ -231,14 +196,6 @@ button, input, textarea { font: inherit; }
 
   color: #fff;
   opacity: 0.4;
-
-  cursor: text;
-  border-radius: 3px;
-  transition: background 0.15s ease;
-}
-
-.empty-space-slot:hover {
-  background: rgba(255, 255, 255, 0.08);
 }
 
 .floatspace-overlay {
