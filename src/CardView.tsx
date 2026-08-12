@@ -211,7 +211,7 @@ export function CardView({
         mode: "move" | "resize";
     }>();
     
-    const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+    const textareaRef = useRef<HTMLDivElement | null>(null);
     const [isActive, setIsActive] = useState(false);
     
     const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -219,6 +219,17 @@ export function CardView({
     const [deleteProgress, setDeleteProgress] = useState(0);
     const deleteStart = useRef<number | null>(null);
     const deleteAnimation = useRef<number | null>(null);
+    
+    useEffect(() => {
+      const element = textareaRef.current;
+
+      if (!element) return;
+
+      if (element.innerHTML !== card.text) {
+        element.innerHTML = card.text || "";
+      }
+    }, [card.id, card.text]);
+
     
     function begin(event: React.PointerEvent, mode: "move" | "resize") {
         event.preventDefault();
@@ -490,28 +501,60 @@ export function CardView({
             }}
             >
             <div className="card-background" />
-            <div className="card-handle" aria-label="Move card"  onPointerDown={(event) => {
+            <div className="card-handle" aria-label="Move card" onPointerDown={(event) => {
                 begin(event, "move");
             }}
-            onPointerMove={move} onPointerUp={finish} onPointerCancel={finish}/>
+            onPointerMove={move}
+            onPointerUp={finish}
+            onPointerCancel={finish}/>
             
-            <textarea
-            ref={textareaRef}
-            autoFocus={autoFocus}
-            spellCheck={false}
-            autoCorrect="off"
-            autoCapitalize="off"
-            autoComplete="off"
-            aria-label="Card text"
-            value={card.text}
-            placeholder={isActive && !card.text ? "Write something..." : ""}
-            onFocus={() => setIsActive(true)}
-            onBlur={() => setIsActive(false)}
-            onChange={(event) => {
-                onChange({ ...card, text: event.target.value });
+            <div
+              ref={textareaRef}
+              className="card-textarea"
+              contentEditable
+              suppressContentEditableWarning
+              autoFocus={autoFocus}
+              spellCheck={false}
+              aria-label="Card text"
+              data-placeholder={
+                isActive && !card.text ? "Write something..." : ""
+              }
+              onFocus={() => {
+                setFocusedCardId(card.id);
+                onActivate();
+              }}
+              onInput={(event) => {
+                const html = event.currentTarget.innerHTML;
+
+                onChange({
+                  ...card,
+                  text: html,
+                });
+
                 onType?.();
-            }}
+              }}
+              onKeyDown={(event) => {
+                if (event.metaKey && event.key.toLowerCase() === "b") {
+                  event.preventDefault();
+                  document.execCommand("bold");
+                  return;
+                }
+
+                if (event.metaKey && event.key.toLowerCase() === "i") {
+                  event.preventDefault();
+                  document.execCommand("italic");
+                  return;
+                }
+
+                if (event.metaKey && event.key.toLowerCase() === "u") {
+                  event.preventDefault();
+                  document.execCommand("underline");
+                  return;
+                }
+              }}
+              onBlur={() => setIsActive(false)}
             />
+
             <div
             className="resize-handle"
             aria-label="Resize card"

@@ -71,7 +71,7 @@ button, input, textarea { font: inherit; }
   box-shadow: 0 8px 32px rgb(0 0 0 / 8%);
 }
 
-.card textarea {
+.card-textarea {
     width: 100%;
     height: 100%;
     resize: none;
