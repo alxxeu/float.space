@@ -207,7 +207,13 @@ export function CardView({
                           } | null
                           ) => void;
     setEdgeHint: (
-      edge: "top" | "left" | "right" | "bottom" | null
+      hint: {
+        edge: "top" | "left" | "right" | "bottom";
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+      } | null
     ) => void;
 }) {
     const start = useRef<{
