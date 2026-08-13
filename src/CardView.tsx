@@ -11,6 +11,8 @@ import {
 
 import type { Card } from "./domain";
 
+import { openUrl } from "@tauri-apps/plugin-opener";
+
 const MIN_CARD_SIZE = 120;
 const CARD_SIZE_STEP = 60;
 const TOP_CREATION_LIMIT = 73;
@@ -214,7 +216,7 @@ export function CardView({
         width: number;
         height: number;
       } | null
-    ) => void;
+    ) => void;е
 }) {
     const start = useRef<{
         x: number;
@@ -640,8 +642,48 @@ export function CardView({
               spellCheck={false}
               aria-label="Card text"
             
+            onClick={(event) => {
+              const target = event.target as HTMLElement;
+              const link = target.closest("a");
+
+              if (!link) return;
+
+              const href = link.getAttribute("href");
+
+              if (!href) return;
+
+              event.preventDefault();
+              event.stopPropagation();
+
+              void openUrl(href);
+            }}
+            
             onPointerDown={(event) => {
+              const target = event.target as HTMLElement;
+              const link = target.closest("a");
+
+              if (link) {
+                event.preventDefault();
                 event.stopPropagation();
+
+                const href = link.getAttribute("href");
+
+                console.log("LINK CLICK:", href);
+
+                if (href) {
+                  void openUrl(href)
+                    .then(() => {
+                      console.log("LINK OPENED:", href);
+                    })
+                    .catch((error) => {
+                      console.error("LINK OPEN ERROR:", error);
+                    });
+                }
+
+                return;
+              }
+
+              event.stopPropagation();
             }}
               data-placeholder={
                 isActive && !card.text ? "Write something..." : ""

@@ -754,3 +754,7 @@ button, input, textarea { font: inherit; }
   filter: blur(1px);
   border-radius: 999px;
 }
+
+.card-textarea a {
+  cursor: pointer;
+}
