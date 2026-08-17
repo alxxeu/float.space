@@ -167,19 +167,19 @@ fn set_overlay_mode(
     native_desktop::apply_mode(&window, mode)
         .map_err(|error| error.to_string())?;
 
-    #[cfg(target_os = "macos")]
-    {
-        match mode {
-            native_desktop::Mode::Workspace => {
-                native_desktop::set_desktop_icons_visible(false)
-                    .map_err(|error| error.to_string())?;
-}
-            native_desktop::Mode::Desktop => {
-                native_desktop::set_desktop_icons_visible(true)
-                    .map_err(|error| error.to_string())?;
-            }
-        }
-    }
+//   #[cfg(target_os = "macos")]
+//   {
+//       match mode {
+//           native_desktop::Mode::Workspace => {
+//                native_desktop::set_desktop_icons_visible(false)
+//                    .map_err(|error| error.to_string())?;
+// }
+//            native_desktop::Mode::Desktop => {
+//                native_desktop::set_desktop_icons_visible(true)
+//                    .map_err(|error| error.to_string())?;
+//            }
+//        }
+//    }
 
     Ok(())
 }
@@ -257,14 +257,6 @@ pub fn run() {
                             );
                             return;
                         }
-
-                        if let Err(error) =
-                            native_desktop::set_desktop_icons_visible(true)
-                        {
-                            eprintln!(
-                                "Floatspace could not show desktop icons: {error}"
-                            );
-                        }
                     }
 
                     if let Err(error) =
@@ -321,14 +313,6 @@ pub fn run() {
                             "Floatspace could not enter Workspace mode: {error}"
                         );
                         return;
-                    }
-
-                    if let Err(error) =
-                        native_desktop::set_desktop_icons_visible(false)
-                    {
-                        eprintln!(
-                            "Floatspace could not hide desktop icons: {error}"
-                        );
                     }
                 }
 

@@ -129,39 +129,6 @@ fn apply_macos_mode<R: Runtime>(
 }
 
 #[cfg(target_os = "macos")]
-pub fn set_desktop_icons_visible(
-    visible: bool,
-) -> std::io::Result<()> {
-    let value = if visible {
-        "true"
-    } else {
-        "false"
-    };
-
-    std::process::Command::new("defaults")
-        .args([
-            "write",
-            "com.apple.finder",
-            "CreateDesktop",
-            value,
-        ])
-        .status()?;
-
-    std::process::Command::new("killall")
-        .arg("Finder")
-        .status()?;
-
-    Ok(())
-}
-
-#[cfg(not(target_os = "macos"))]
-pub fn set_desktop_icons_visible(
-    _visible: bool,
-) -> std::io::Result<()> {
-    Ok(())
-}
-
-#[cfg(target_os = "macos")]
 pub fn minimize_other_windows() -> std::io::Result<()> {
     std::process::Command::new("osascript")
         .args([
