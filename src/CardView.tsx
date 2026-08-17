@@ -182,6 +182,7 @@ export function CardView({
     autoFocus,
     focusedCardId,
     setFocusedCardId,
+    spotlightActive,
     onChange,
     onDelete,
     onActivate,
@@ -195,6 +196,7 @@ export function CardView({
     autoFocus: boolean;
     focusedCardId: string | null;
     setFocusedCardId: (id: string | null) => void;
+    spotlightActive: boolean;
     onChange: (card: Card, immediately?: boolean) => void;
     onDelete: (id: string) => void;
     onActivate: () => void;
@@ -216,7 +218,7 @@ export function CardView({
         width: number;
         height: number;
       } | null
-    ) => void;е
+    ) => void;
 }) {
     const start = useRef<{
         x: number;
@@ -231,32 +233,32 @@ export function CardView({
 
     useEffect(() => {
       const element = textareaRef.current;
-
       if (!element) return;
 
       element.innerHTML = card.text || "";
 
-      if (autoFocus && !card.text) {
-        firstLineBoldRef.current = true;
+      if (!autoFocus) return;
 
-        requestAnimationFrame(() => {
-          element.focus();
+      const frame = requestAnimationFrame(() => {
+        const currentElement = textareaRef.current;
+        if (!currentElement) return;
 
-          // Ставим курсор в начало
-          const selection = window.getSelection();
-          const range = document.createRange();
+        currentElement.focus();
 
-          range.selectNodeContents(element);
-          range.collapse(false);
+        const selection = window.getSelection();
+        const range = document.createRange();
 
-          selection?.removeAllRanges();
-          selection?.addRange(range);
+        range.selectNodeContents(currentElement);
+        range.collapse(false);
 
-          // Включаем bold для нового вводимого текста
-          document.execCommand("bold", false, "true");
-        });
-      }
-    }, [card.id]);
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+
+        setFocusedCardId(card.id);
+      });
+
+      return () => cancelAnimationFrame(frame);
+    }, [card.id, autoFocus, setFocusedCardId]);
     
     const [isActive, setIsActive] = useState(false);
     
@@ -601,7 +603,9 @@ export function CardView({
     
     return (
             <motion.article
-            className={`card ${focusedCardId === card.id ? "card-focused" : ""}`}
+            className={`card ${
+              focusedCardId === card.id ? "card-focused" : ""
+            } ${spotlightActive ? "card-spotlight-found" : ""}`}
             style={{
                 left: card.x,
                 top: card.y,
@@ -638,7 +642,6 @@ export function CardView({
               className="card-textarea"
               contentEditable
               suppressContentEditableWarning
-              autoFocus={autoFocus}
               spellCheck={false}
               aria-label="Card text"
             

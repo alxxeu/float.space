@@ -6,21 +6,21 @@ use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct Workspace {
-    id: String,
-    name: String,
-    slot: i64,
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) slot: i64,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Card {
-    id: String,
-    workspace_id: String,
-    text: String,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
+    pub(crate) id: String,
+    pub(crate) workspace_id: String,
+    pub(crate) text: String,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) width: f64,
+    pub(crate) height: f64,
 }
 
 #[derive(Deserialize)]

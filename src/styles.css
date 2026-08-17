@@ -758,3 +758,19 @@ button, input, textarea { font: inherit; }
 .card-textarea a {
   cursor: pointer;
 }
+
+.card-spotlight-found {
+  animation: spotlight-found 2s ease-out;
+}
+
+@keyframes spotlight-found {
+  0% {
+    box-shadow:
+      0 0 0 2px rgb(255 255 255 / 35%),
+      0 0 30px rgb(255 255 255 / 15%);
+  }
+
+  100% {
+    box-shadow: none;
+  }
+}

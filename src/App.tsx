@@ -68,11 +68,17 @@ function snapCardSize(value: number) {
 type DraftCard = Omit<Card, "id" | "workspaceId" | "text">;
 
 export function App() {
+    
+    useEffect(() => {
+      console.log("SPOTLIGHT DEBUG → APP MOUNTED");
+    }, []);
+    
   const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [focusCardId, setFocusCardId] = useState<string | null>(null);
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
+  const [spotlightCardId, setSpotlightCardId] = useState<string | null>(null);
   const [cardsWorkspaceId, setCardsWorkspaceId] = useState<string | null>(null);
   const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
   const nextZIndex = useRef(1);
@@ -125,6 +131,12 @@ export function App() {
   const [onboardingStep, setOnboardingStep] =
       useState<OnboardingStep | null>(null);
   const onboardingStepRef = useRef<OnboardingStep | null>(null);
+    
+    const workspacesRef = useRef(workspaces);
+
+    useEffect(() => {
+      workspacesRef.current = workspaces;
+    }, [workspaces]);
     
 
     useEffect(() => {
@@ -358,17 +370,108 @@ export function App() {
     }, []);
     
     useEffect(() => {
-        if (!activeWorkspaceId) {
-            setCards([]);
-            setCardsWorkspaceId(null);
-            return;
+      if (!activeWorkspaceId) {
+        setCards([]);
+        setCardsWorkspaceId(null);
+        return;
+      }
+
+      void loadCards(activeWorkspaceId).then((loaded) => {
+        setCards(loaded);
+        setCardsWorkspaceId(activeWorkspaceId);
+      });
+    }, [activeWorkspaceId]);
+
+    const spotlightOpeningCardRef = useRef<string | null>(null);
+
+    useEffect(() => {
+      let unlisten: (() => void) | undefined;
+
+      const openCard = async (cardId: string) => {
+        const normalizedCardId = String(cardId).trim();
+
+        if (!normalizedCardId) return;
+
+        // macOS/Core Spotlight can deliver the same activity more than once.
+        if (spotlightOpeningCardRef.current === normalizedCardId) {
+          console.log("SPOTLIGHT → DUPLICATE IGNORED:", normalizedCardId);
+          return;
         }
 
-        void loadCards(activeWorkspaceId).then((loaded) => {
-            setCards(loaded);
-            setCardsWorkspaceId(activeWorkspaceId);
-        });
-    }, [activeWorkspaceId]);
+        spotlightOpeningCardRef.current = normalizedCardId;
+
+        console.log("SPOTLIGHT → OPEN CARD REQUEST:", normalizedCardId);
+
+        try {
+          for (const workspace of workspacesRef.current) {
+            const workspaceCards = await loadCards(workspace.id);
+            const card = workspaceCards.find(
+              (item) => String(item.id).trim() === normalizedCardId
+            );
+
+            if (!card) continue;
+
+            console.log(
+              "SPOTLIGHT → FOUND CARD:",
+              card.id,
+              "workspace:",
+              workspace.slot
+            );
+
+            await setOverlayMode(false, true);
+            setIsFloatspaceLayer(true);
+            setActiveWorkspaceId(workspace.id);
+            setFocusCardId(card.id);
+            setSpotlightCardId(card.id);
+
+              window.setTimeout(() => {
+                setSpotlightCardId((current) =>
+                  current === card.id ? null : current
+                );
+              }, 2000);
+              
+            return;
+          }
+
+          console.log("SPOTLIGHT → CARD NOT FOUND:", normalizedCardId);
+        } finally {
+          window.setTimeout(() => {
+            if (spotlightOpeningCardRef.current === normalizedCardId) {
+              spotlightOpeningCardRef.current = null;
+            }
+          }, 500);
+        }
+      };
+
+      void listen<string>(
+        "open-card-from-spotlight",
+        async (event) => {
+          console.log("SPOTLIGHT → EVENT RECEIVED:", event.payload);
+          await openCard(event.payload);
+        }
+      ).then(async (cleanup) => {
+        unlisten = cleanup;
+        console.log("SPOTLIGHT → LISTENER REGISTERED");
+
+        try {
+          const pendingCardId = await invoke<string | null>(
+            "take_pending_spotlight_card"
+          );
+
+          console.log("SPOTLIGHT → PENDING CHECK:", pendingCardId);
+
+          if (pendingCardId) {
+            await openCard(pendingCardId);
+          }
+        } catch (error) {
+          console.error("SPOTLIGHT → FAILED TO GET PENDING CARD:", error);
+        }
+      });
+
+      return () => {
+        unlisten?.();
+      };
+    }, []);
 
   useEffect(() => () => {
     for (const timer of saveTimers.current.values()) clearTimeout(timer);
@@ -719,6 +822,7 @@ export function App() {
                 setEdgeHint={setEdgeHintPreview}
                 autoFocus={card.id === focusCardId}
                 focusedCardId={focusedCardId}
+                spotlightActive={card.id === spotlightCardId}
                 setFocusedCardId={setFocusedCardId}
                                   
                                   onType={() => {

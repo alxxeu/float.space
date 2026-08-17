@@ -1,37 +1,60 @@
 {
-  "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Floatspace",
-  "version": "0.1.0",
-  "identifier": "com.floatspace.app",
-  "build": {
-    "beforeDevCommand": "npm run dev -- --port 1423",
-    "devUrl": "http://127.0.0.1:1423",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
-  },
-  "app": {
-      "macOSPrivateApi": true,
-      
-    "windows": [
-      {
-        "title": "Floatspace",
-        "width": 1100,
-        "height": 720,
-        "resizable": false,
-        "decorations": false,
-        "transparent": true,
-        "shadow": false,
-        "visible": false
+    "$schema": "https://schema.tauri.app/config/2",
+    "productName": "Floatspace",
+    "version": "0.1.0",
+    "identifier": "com.floatspace.app",
+    
+    "build": {
+      "beforeDevCommand": "npm run dev -- --port 1423",
+      "devUrl": "http://127.0.0.1:1423",
+      "beforeBuildCommand": "npm run build && ./scripts/bundle-spotlight.sh",
+      "frontendDist": "../dist"
+    },
+    
+    "app": {
+        "macOSPrivateApi": true,
+        
+        "windows": [
+            {
+                "title": "Floatspace",
+                "width": 1100,
+                "height": 720,
+                "resizable": false,
+                "decorations": false,
+                "transparent": true,
+                "shadow": false,
+                "visible": false
+            }
+        ],
+        
+        "security": {
+            "csp": null
+        }
+    },
+    
+    "plugins": {
+      "deep-link": {
+        "desktop": {
+          "schemes": ["floatspace"]
+        }
       }
-    ],
-    "security": { "csp": null }
-  },
-  "bundle": {
-     "active": true,
-     "targets": ["app", "dmg"],
-     "macOS": {
-       "minimumSystemVersion": "26.0"
-     }
-   }
- }
+    },
+    
+    "bundle": {
+      "active": true,
 
+      "targets": [
+        "app",
+        "dmg"
+      ],
+
+      "macOS": {
+        "minimumSystemVersion": "26.0",
+        "signingIdentity": "Apple Development: alxxeu@proton.me (98WKTQM42F)",
+
+        "frameworks": [
+          "native/libFloatspaceSpotlightBridge.dylib"
+        ]
+      }
+    }
+}
