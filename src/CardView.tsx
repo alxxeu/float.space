@@ -436,74 +436,39 @@ export function CardView({
       const dx = event.clientX - operation.x;
       const dy = event.clientY - operation.y;
 
-      if (operation.mode === "move") {
-        const maxX = Math.max(
-          CANVAS_SIDE_PADDING,
-          canvas.width - CANVAS_SIDE_PADDING - operation.card.width
-        );
+        if (operation.mode === "move") {
+          const maxX = Math.max(
+            CANVAS_SIDE_PADDING,
+            canvas.width - CANVAS_SIDE_PADDING - operation.card.width
+          );
 
-        const maxY = Math.max(
-          TOP_CREATION_LIMIT,
-          canvas.height - CANVAS_SIDE_PADDING - operation.card.height
-        );
+          const maxY = Math.max(
+            TOP_CREATION_LIMIT,
+            canvas.height - CANVAS_SIDE_PADDING - operation.card.height
+          );
 
-        const next = {
-          ...operation.card,
+          // Карточка движется плавно и свободно за рукой во время перетаскивания
+          const next = {
+            ...operation.card,
+            x: Math.min(maxX, Math.max(CANVAS_SIDE_PADDING, operation.card.x + dx)),
+            y: Math.min(maxY, Math.max(TOP_CREATION_LIMIT, operation.card.y + dy)),
+          };
 
-          x: Math.min(
-            maxX,
-            Math.max(
-              CANVAS_SIDE_PADDING,
-              operation.card.x + dx
-            )
-          ),
+          operation.latest = next;
+          onChange(next);
 
-          y: Math.min(
-            maxY,
-            Math.max(
-              TOP_CREATION_LIMIT,
-              operation.card.y + dy
-            )
-          ),
-        };
-
-        operation.latest = next;
-        onChange(next);
-
+          // Отрисовка полосок-подсказок (они будут загораться при приближении к стене, подсказывая, что сработает магнит!)
           const EDGE_HINT_DISTANCE = 35;
-
           const topDistance = next.y - TOP_CREATION_LIMIT;
           const leftDistance = next.x - CANVAS_SIDE_PADDING;
-
-          const rightDistance =
-            canvas.width -
-            CANVAS_SIDE_PADDING -
-            next.x -
-            next.width;
-
-          const bottomDistance =
-            canvas.height -
-            CANVAS_SIDE_PADDING -
-            next.y -
-            next.height;
+          const rightDistance = canvas.width - CANVAS_SIDE_PADDING - next.x - next.width;
+          const bottomDistance = canvas.height - CANVAS_SIDE_PADDING - next.y - next.height;
 
           const distances = [
-            {
-              edge: "top" as const,
-              distance: topDistance,
-            },
-            {
-              edge: "left" as const,
-              distance: leftDistance,
-            },
-            {
-              edge: "right" as const,
-              distance: rightDistance,
-            },
-            {
-              edge: "bottom" as const,
-              distance: bottomDistance,
-            },
+            { edge: "top" as const, distance: topDistance },
+            { edge: "left" as const, distance: leftDistance },
+            { edge: "right" as const, distance: rightDistance },
+            { edge: "bottom" as const, distance: bottomDistance },
           ];
 
           const closest = distances.reduce((best, current) =>
@@ -512,59 +477,26 @@ export function CardView({
 
           if (closest.distance <= EDGE_HINT_DISTANCE) {
             if (closest.edge === "top") {
-              setEdgeHint({
-                edge: "top",
-                x: next.x,
-                y: TOP_CREATION_LIMIT,
-                width: next.width,
-                height: 3,
-              });
+              setEdgeHint({ edge: "top", x: next.x, y: TOP_CREATION_LIMIT, width: next.width, height: 3 });
             }
-
             if (closest.edge === "bottom") {
-              setEdgeHint({
-                edge: "bottom",
-                x: next.x,
-                y: canvas.height - CANVAS_SIDE_PADDING,
-                width: next.width,
-                height: 3,
-              });
+              setEdgeHint({ edge: "bottom", x: next.x, y: canvas.height - CANVAS_SIDE_PADDING, width: next.width, height: 3 });
             }
-
             if (closest.edge === "left") {
-              setEdgeHint({
-                edge: "left",
-                x: CANVAS_SIDE_PADDING,
-                y: next.y,
-                width: 3,
-                height: next.height,
-              });
+              setEdgeHint({ edge: "left", x: CANVAS_SIDE_PADDING, y: next.y, width: 3, height: next.height });
             }
-
             if (closest.edge === "right") {
-              setEdgeHint({
-                edge: "right",
-                x: canvas.width - CANVAS_SIDE_PADDING,
-                y: next.y,
-                width: 3,
-                height: next.height,
-              });
+              setEdgeHint({ edge: "right", x: canvas.width - CANVAS_SIDE_PADDING, y: next.y, width: 3, height: next.height });
             }
           } else {
             setEdgeHint(null);
           }
           
-        const preview = findPlacementPreview(
-          next,
-          cards,
-          canvas.width,
-          canvas.height
-        );
+          const preview = findPlacementPreview(next, cards, canvas.width, canvas.height);
+          setPlacementPreview(preview);
+          return;
+        }
 
-        setPlacementPreview(preview);
-
-        return;
-      }
 
       // resize
       const maxWidth = Math.max(
@@ -615,14 +547,45 @@ export function CardView({
         let finalCard = operation.latest;
         
         if (operation.mode === "move") {
+            // 1. Сначала считаем магнитные стены
+            let finalX = operation.latest.x;
+            let finalY = operation.latest.y;
+
+            const SNAP_THRESHOLD = 30; // Дистанция притяжения к стене в пикселях
+
+            const distToLeft = finalX - CANVAS_SIDE_PADDING;
+            const distToRight = (canvas?.width ?? window.innerWidth) - CANVAS_SIDE_PADDING - finalX - operation.card.width;
+            const distToTop = finalY - TOP_CREATION_LIMIT;
+            const distToBottom = (canvas?.height ?? window.innerHeight) - CANVAS_SIDE_PADDING - finalY - operation.card.height;
+
+            if (distToLeft < SNAP_THRESHOLD) {
+                finalX = CANVAS_SIDE_PADDING;
+            } else if (distToRight < SNAP_THRESHOLD) {
+                finalX = (canvas?.width ?? window.innerWidth) - CANVAS_SIDE_PADDING - operation.card.width;
+            }
+
+            if (distToTop < SNAP_THRESHOLD) {
+                finalY = TOP_CREATION_LIMIT;
+            } else if (distToBottom < SNAP_THRESHOLD) {
+                finalY = (canvas?.height ?? window.innerHeight) - CANVAS_SIDE_PADDING - operation.card.height;
+            }
+
+            // Записываем результат магнита стен
+            finalCard = {
+                ...finalCard,
+                x: finalX,
+                y: finalY,
+            };
+
+            // 2. Твоя оригинальная логика примагничивания К ДРУГИМ КАРТОЧКАМ (перебивает стены, если они рядом)
             const preview = canvas
-            ? findPlacementPreview(
-                                   operation.latest,
-                                   cards,
-                                   canvas.width,
-                                   canvas.height
-                                   )
-            : null;
+                ? findPlacementPreview(
+                    operation.latest, // Используем строго operation.latest, как в твоем старом рабочем коде!
+                    cards,
+                    canvas.width,
+                    canvas.height
+                  )
+                : null;
             
             if (preview) {
                 finalCard = {
@@ -634,6 +597,7 @@ export function CardView({
             
             setPlacementPreview(null);
         }
+
         
         if (operation.mode === "resize") {
             const maxWidth = Math.max(
