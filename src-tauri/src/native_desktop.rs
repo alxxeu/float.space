@@ -71,6 +71,65 @@ pub fn apply_mode<R: Runtime>(
 }
 
 #[cfg(target_os = "macos")]
+fn ensure_blur_view(
+    content_view: &objc2_app_kit::NSView,
+) -> objc2::rc::Retained<objc2_app_kit::NSVisualEffectView> {
+    use objc2::MainThreadMarker; // <-- ИСПРАВЛЕНО: импортируем напрямую из корня objc2
+    use objc2::MainThreadOnly;
+    use objc2::Message;
+    use objc2_app_kit::{
+        NSAutoresizingMaskOptions,
+        NSVisualEffectBlendingMode,
+        NSVisualEffectMaterial,
+        NSVisualEffectState,
+        NSVisualEffectView,
+        NSWindowOrderingMode,
+    };
+
+    // Если блюр-слой уже вставлен — переиспользуем его
+    for view in content_view.subviews().iter() {
+        if let Some(existing) = view.downcast_ref::<NSVisualEffectView>() {
+            return existing.retain();
+        }
+    }
+
+    // Получаем маркер главного потока
+    let mtm = MainThreadMarker::new()
+        .expect("ensure_blur_view must be called on the main thread");
+
+    let bounds = content_view.bounds();
+
+    let blur_view = unsafe {
+        NSVisualEffectView::initWithFrame(
+            NSVisualEffectView::alloc(mtm), // Передаем маркер главного потока
+            bounds,
+        )
+    };
+
+    unsafe {
+        blur_view.setMaterial(NSVisualEffectMaterial::HUDWindow);
+        blur_view.setBlendingMode(NSVisualEffectBlendingMode::BehindWindow);
+        blur_view.setState(NSVisualEffectState::Active);
+        
+        // Устанавливаем маску изменения размеров, удалив несуществующий setZerosAutoresizingMask
+        blur_view.setAutoresizingMask(
+            NSAutoresizingMaskOptions::ViewWidthSizable
+                | NSAutoresizingMaskOptions::ViewHeightSizable,
+        );
+    }
+
+    unsafe {
+        content_view.addSubview_positioned_relativeTo(
+            &blur_view,
+            NSWindowOrderingMode::Below,
+            None,
+        );
+    }
+
+    blur_view
+}
+
+#[cfg(target_os = "macos")]
 fn apply_macos_mode<R: Runtime>(
     window: &WebviewWindow<R>,
     mode: Mode,
@@ -100,9 +159,9 @@ fn apply_macos_mode<R: Runtime>(
 
     native_window.setHasShadow(false);
 
-native_window.setCollectionBehavior(
-    NSWindowCollectionBehavior::IgnoresCycle,
-);
+    native_window.setCollectionBehavior(
+        NSWindowCollectionBehavior::IgnoresCycle,
+    );
 
     let desktop_icon_level =
         CGWindowLevelForKey(
@@ -112,11 +171,6 @@ native_window.setCollectionBehavior(
     match mode {
         Mode::Desktop => {
             // Ниже слоя иконок Finder.
-            //
-            // Поэтому:
-            // - Floatspace визуально находится на рабочем столе;
-            // - иконки Finder находятся поверх него;
-            // - Floatspace не получает мышь.
             native_window.setLevel(
                 (desktop_icon_level - 1) as isize,
             );
@@ -125,18 +179,19 @@ native_window.setCollectionBehavior(
         }
 
         Mode::Workspace => {
-            // Выше desktop icon layer,
-            // но НЕ Floating и НЕ NSNormalWindowLevel + 1.
-            //
-            // Это принципиально:
-            // мы не делаем Floatspace активным приложением
-            // и не вызываем makeKeyAndOrderFront.
+            // Выше desktop icon layer.
             native_window.setLevel(
                 (desktop_icon_level + 1) as isize,
             );
 
             native_window.setIgnoresMouseEvents(false);
         }
+    }
+
+    if let Some(content_view) = native_window.contentView() {
+        let blur_view = ensure_blur_view(&content_view);
+
+            blur_view.setHidden(mode == Mode::Desktop);
     }
 
     Ok(())
