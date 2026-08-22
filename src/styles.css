@@ -37,6 +37,7 @@ button, input, textarea {
   user-select: none;
   -webkit-user-select: none;
   background: transparent !important;
+  z-index: 2; 
 }
 
 /* ==========================================================================
