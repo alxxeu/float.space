@@ -12,4 +12,5 @@ export interface Card {
   y: number;
   width: number;
   height: number;
+  tagColor?: string;
 }

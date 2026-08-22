@@ -236,6 +236,64 @@ export function CardView({
     
     const textareaRef = useRef<HTMLDivElement | null>(null);
     const firstLineBoldRef = useRef(false);
+    
+    const handleFocus = () => {
+        setFocusedCardId(card.id);
+        onActivate();
+        setIsActive(true);
+
+        if (!textareaRef.current) return;
+
+        // Авто-форматирование первой строки жирным
+        if (!card.text) {
+            textareaRef.current.innerHTML = "<b><br></b>";
+            const range = document.createRange();
+            const selection = window.getSelection();
+            range.selectNodeContents(textareaRef.current);
+            range.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
+            firstLineBoldRef.current = true;
+        }
+    };
+
+    const handleBlur = () => {
+        setIsActive(false);
+        if (focusedCardId === card.id) {
+            setFocusedCardId(null);
+        }
+        
+        if (textareaRef.current) {
+            onChange({
+                ...card,
+                text: textareaRef.current.innerHTML,
+            }, true); // Жесткий коммит в SQLite
+        }
+    };
+
+    const handlePaletteLeave = () => {
+        // Если мышь ушла, запускаем таймер закрытия на 350 миллисекунд
+        // Этого времени достаточно, чтобы случайный рывок мыши не закрыл меню
+        paletteTimeoutRef.current = setTimeout(() => {
+            setIsPaletteOpen(false);
+        }, 350);
+    };
+
+    const handlePaletteEnter = () => {
+        // Если пользователь вернул мышь обратно на палитру до истечения 350мс,
+        // мы мгновенно отменяем таймер закрытия, и меню остается открытым
+        if (paletteTimeoutRef.current) {
+            clearTimeout(paletteTimeoutRef.current);
+            paletteTimeoutRef.current = null;
+        }
+    };
+    
+    useEffect(() => {
+        // Очищаем таймер палитры при размонтировании компонента карточки
+        return () => {
+            if (paletteTimeoutRef.current) clearTimeout(paletteTimeoutRef.current);
+        };
+    }, []);
 
     useEffect(() => {
       const element = textareaRef.current;
@@ -268,12 +326,27 @@ export function CardView({
     
     const [isActive, setIsActive] = useState(false);
     
+    const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+    
+    // 8 официальных системных цветов macOS (включая серый для сброса)
+    const availableColors = [
+        { name: "red", hex: "#FF383C" },    // Красный
+        { name: "orange", hex: "#FF8D28" }, // Оранжевый
+        { name: "yellow", hex: "#FFCC00" }, // Желтый
+        { name: "gray", hex: "#8D8D8C" },   // Серый — кнопка снятия тэга
+        { name: "green", hex: "#34C759" },  // Зеленый
+        { name: "blue", hex: "#0088FF" },   // Синий
+        { name: "purple", hex: "#6155F5" }, // Фиолетовый
+        { name: "pink", hex: "#CB30E0" }    // Розовый
+    ];
+    const paletteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
     const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
     const [deleteProgress, setDeleteProgress] = useState(0);
     const deleteStart = useRef<number | null>(null);
     const deleteAnimation = useRef<number | null>(null);
-    
+
     function begin(event: React.PointerEvent, mode: "move" | "resize") {
         event.preventDefault();
         event.stopPropagation();
@@ -608,8 +681,8 @@ export function CardView({
     }
     
     const canvasElement = textareaRef.current?.closest(".canvas");
-    const canvasWidth = canvasElement?.clientWidth ?? window.innerWidth;
-    const canvasHeight = canvasElement?.clientHeight ?? window.innerHeight;
+    const canvasWidth = window.innerWidth;
+    const canvasHeight = window.innerHeight;
 
     const renderX = Math.max(
         CANVAS_SIDE_PADDING,
@@ -625,26 +698,35 @@ export function CardView({
         className={`card ${
           focusedCardId === card.id ? "card-focused" : ""
         } ${spotlightActive ? "card-spotlight-found" : ""}`}
+
         style={{
-            left: renderX,  // ИСПОЛЬЗУЕМ СКОРРЕКТИРОВАННЫЙ X
-            top: renderY,   // ИСПОЛЬЗУЕМ СКОРРЕКТИРОВАННЫЙ Y
+            left: renderX,
+            top: renderY,
             width: card.width,
             height: card.height,
             zIndex,
             opacity: isCut ? 0.4 : 1,
             filter: isCut ? "grayscale(30%)" : "none",
         }}
-        initial={{ opacity: 1, scale: 1 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{
-                opacity: 0,
-                scale: 0.92,
-                transition: {
-                    duration: 0.2,
-                    ease: "easeOut",
-                },
-            }}
-            onPointerDown={(event) => {
+            
+                    initial={{ opacity: 0, scale: 0.96 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    
+                    
+                    exit={{
+                        opacity: 0,
+                        scale: 0.96,
+                        transition: { duration: 0.18, ease: "easeOut" }, // Быстрое и чистое растворение за 180мс
+                    }}
+                    
+                    // Мягкий переход для появления/исчезновения
+                    transition={{
+                        type: "tween",
+                        duration: 0.22,
+                        ease: "easeOut"
+                    }}
+            
+                    onPointerDown={(event) => {
                 event.stopPropagation();
                 onActivate();
                 setFocusedCardId(card.id);
@@ -665,6 +747,9 @@ export function CardView({
               suppressContentEditableWarning
               spellCheck={false}
               aria-label="Card text"
+            
+            onFocus={handleFocus}
+            onBlur={handleBlur}
             
             onPaste={(event) => {
               event.preventDefault();
@@ -737,26 +822,6 @@ export function CardView({
               data-placeholder={
                 isActive && !card.text ? "Write something..." : ""
               }
-                
-            onFocus={() => {
-              setFocusedCardId(card.id);
-              onActivate();
-
-              if (!card.text && textareaRef.current) {
-                textareaRef.current.innerHTML = "<b><br></b>";
-
-                const range = document.createRange();
-                const selection = window.getSelection();
-
-                range.selectNodeContents(textareaRef.current);
-                range.collapse(false);
-
-                selection?.removeAllRanges();
-                selection?.addRange(range);
-
-                firstLineBoldRef.current = true;
-              }
-            }}
             
             onInput={(event) => {
               const html = event.currentTarget.innerHTML;
@@ -786,81 +851,81 @@ export function CardView({
                     }
                     
                   // === НАЧАЛО БЛОКА АВТОЗАМЕНЫ ТИРЕ НА ЛИНИЮ ===
-                  if (event.key === "Enter") {
-                    const selection = window.getSelection();
-                    if (selection && selection.rangeCount > 0) {
-                      const range = selection.getRangeAt(0);
-                      const textNode = range.startContainer;
-                      
-                      if (textNode.nodeType === Node.TEXT_NODE) {
-                        const content = textNode.textContent || "";
-                        const offset = range.startOffset;
-                        const textBeforeCursor = content.substring(0, offset);
+                    if (event.key === "Enter") {
+                      const selection = window.getSelection();
+                      if (selection && selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const textNode = range.startContainer;
                         
-                        // Регулярное выражение строго ищет от 3 до 20 тире в конце строки перед курсором
-                        const dashRegex = /(-{3,20})$/;
-                        const match = textBeforeCursor.match(dashRegex);
-                        
-                        if (match) {
-                          event.preventDefault(); // Отменяем стандартный Enter
+                        if (textNode.nodeType === Node.TEXT_NODE) {
+                          const content = textNode.textContent || "";
+                          const offset = range.startOffset;
+                          const textBeforeCursor = content.substring(0, offset);
                           
-                          const matchedText = match[0];
-                          const matchLength = matchedText.length;
-                          const startOffset = offset - matchLength;
+                          const dashRegex = /(-{3,20})$/;
+                          const match = textBeforeCursor.match(dashRegex);
                           
-                          // Удаляем именно тире без выделения всего текста
-                          textNode.deleteData(startOffset, matchLength);
-                          
-                          // Создаем саму линию
-                          const hr = document.createElement("hr");
-                          hr.className = "card-divider";
-                          hr.style.border = "none";
-                          hr.style.borderTop = "1px solid rgba(128, 128, 128, 0.3)";
-                          hr.style.margin = "12px 0";
-                          hr.setAttribute("contenteditable", "false");
-                          
-                          // Создаем элемент переноса строки, чтобы курсор упал на новую строчку вниз
-                          const br = document.createElement("br");
-                          
-                          // Аккуратно вставляем линию и перенос в позицию курсора
-                          range.insertNode(br);
-                          range.insertNode(hr);
-                          
-                          // Переносим курсор за только что вставленный перенос строки <br>
-                          range.setStartAfter(br);
-                          range.setEndAfter(br);
-                          selection.removeAllRanges();
-                          selection.addRange(range);
-                          
-                          // Принудительно отключаем первый жирный шрифт, если линия была создана на первой строчке
-                          firstLineBoldRef.current = false;
-                          
-                          // Сохраняем изменения на бэкенде в Rust
-                          if (textareaRef.current) {
-                            onChange({
-                              ...card,
-                              text: textareaRef.current.innerHTML,
-                            });
+                          if (match) {
+                            event.preventDefault(); // Отменяем стандартный Enter
+                            
+                            const matchedText = match[0];
+                            const matchLength = matchedText.length;
+                            const startOffset = offset - matchLength;
+                            
+                            // Безопасно стираем тире (один раз)
+                            const actualTextNode = textNode as Text;
+                            actualTextNode.deleteData(startOffset, matchLength);
+                                                  
+                            // Создаем саму линию (один раз)
+                            const hr = document.createElement("hr");
+                            hr.className = "card-divider";
+                            hr.style.border = "none";
+                            hr.style.borderTop = "1px solid rgba(128, 128, 128, 0.3)";
+                            hr.style.margin = "12px 0";
+                            hr.setAttribute("contenteditable", "false");
+                            
+                            // Создаем элемент переноса строки
+                            const br = document.createElement("br");
+                            
+                            // Аккуратно вставляем линию и перенос в позицию курсора
+                            range.insertNode(br);
+                            range.insertNode(hr);
+                            
+                            // Переносим курсор за только что вставленный перенос строки <br>
+                            range.setStartAfter(br);
+                            range.setEndAfter(br);
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                            
+                            // Принудительно отключаем первый жирный шрифт
+                            firstLineBoldRef.current = false;
+                            
+                            // Сохраняем изменения на бэкенде в Rust
+                            if (textareaRef.current) {
+                              onChange({
+                                ...card,
+                                text: textareaRef.current.innerHTML,
+                              });
+                            }
+                            return;
                           }
-                          return;
                         }
                       }
                     }
-                  }
-                    
-              if (
-                event.key === "Enter" &&
-                firstLineBoldRef.current
-              ) {
-                event.preventDefault();
+                          
+                    if (
+                      event.key === "Enter" &&
+                      firstLineBoldRef.current
+                    ) {
+                      event.preventDefault();
 
-                document.execCommand("insertParagraph");
-                document.execCommand("bold", false, "false");
+                      document.execCommand("insertParagraph");
+                      document.execCommand("bold", false, "false");
 
-                firstLineBoldRef.current = false;
+                      firstLineBoldRef.current = false;
 
-                return;
-              }
+                      return;
+                    }
 
               if (event.metaKey && event.key.toLowerCase() === "b") {
                 event.preventDefault();
@@ -880,7 +945,7 @@ export function CardView({
                 return;
               }
             }}
-              onBlur={() => setIsActive(false)}
+            onBlur={handleBlur}
             />
 
             <div
@@ -893,6 +958,71 @@ export function CardView({
             onPointerUp={finish}
             onPointerCancel={finish}
             />
+            
+            {/* === БЛОК ТЭГОВ ПО МАКЕТУ === */}
+            <div className="tag-container">
+              {/* Круглая точка-маркер (активна при ховере, либо если цвет уже выбран) */}
+            <button
+              className={`tag-trigger ${card.tagColor ? "has-tag" : ""}`}
+              aria-label="Select tag color"
+              style={{
+                backgroundColor: card.tagColor
+                  ? availableColors.find(c => c.name === card.tagColor)?.hex
+                  : undefined
+              }}
+              onClick={(event) => {
+                event.stopPropagation();
+                setIsPaletteOpen(!isPaletteOpen);
+              }}
+            />
+
+
+              {/* Всплывающая Liquid Glass плашка выбора цвета */}
+              <AnimatePresence>
+                {isPaletteOpen && (
+                  <motion.div
+                    className="tag-palette"
+                                   style={{ transformOrigin: "top right" }}
+                                                     initial={{ opacity: 0, scale: 0.8 }}
+                                                     animate={{ opacity: 1, scale: 1 }}
+                                                     exit={{ opacity: 0, scale: 0.8 }}
+                                                     transition={{ duration: 0.12, ease: "easeOut" }}
+                                                     onPointerDown={(e) => e.stopPropagation()}
+                                                     onMouseEnter={handlePaletteEnter}
+                                                     onMouseLeave={handlePaletteLeave}
+                                                   >
+                                   {availableColors.map((color) => (
+                                     <button
+                                       key={color.name}
+                                       className={`palette-dot ${color.name} ${
+                                         card.tagColor === color.name || (!card.tagColor && color.name === "gray") ? "selected" : ""
+                                       }`}
+                                       style={{ backgroundColor: color.hex }}
+                                       onClick={(event) => {
+                                         event.stopPropagation();
+                                         
+                                         // Если кликнули на серый цвет (gray) — полностью сбрасываем тэг в базе
+                                         // Если кликнули на любой другой цвет — ставим его
+                                         const nextColor = color.name === "gray" ? undefined : color.name;
+                                         
+                                         onChange({
+                                           ...card,
+                                           tagColor: nextColor
+                                         }, true); // Жесткий коммит в SQLite
+                                         
+                                         setIsPaletteOpen(false); // Закрываем палитру
+                                       }}
+                                     />
+                                   ))}
+
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            {/* ============================ */}
+
+            
+            
             <button
             className="delete-card"
             aria-label="Hold to delete card"

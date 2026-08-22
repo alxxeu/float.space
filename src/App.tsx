@@ -812,48 +812,34 @@ export function App() {
             </motion.div>
           )}
           
-          <AnimatePresence key={cardsWorkspaceId}>
+          {/* === ИСПРАВЛЕНО: Добавили режим popLayout для сглаживания потока DOM-элементов === */}
+          <AnimatePresence key={cardsWorkspaceId} mode="popLayout">
             {cards.map((card) => (
-              <motion.div
-                key={card.id}
-                initial={{ opacity: 1, scale: 1 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{
-                  opacity: 0,
-                  scale: 0.8,
-                  transition: {
-                    duration: 0.2,
-                    ease: "easeOut",
-                  },
-                }}
-              >
+                                  
                 <CardView
-                key={card.id}
-                card={card}
-                cards={cards}
-                setPlacementPreview={setPlacementPreview}
-                setEdgeHint={setEdgeHintPreview}
-                autoFocus={card.id === focusCardId}
-                focusedCardId={focusedCardId}
-                spotlightActive={card.id === spotlightCardId}
-                isCut={cutCardId === card.id} // Передаем флаг, вырезана ли эта конкретная карточка
-                onCut={() => setCutCardId(card.id)} // Функция для активации вырезания
-                setFocusedCardId={setFocusedCardId}
-                                  
-                                  onType={() => {
-                                    console.log("ONBOARDING: onType called, current step =", onboardingStep);
-
-                                    if (onboardingStep === 3) {
-                                      console.log("ONBOARDING: 3 → 4");
-                                      void setOnboarding(4);
-                                    }
-                                  }}
-                                  
+                  key={card.id}
+                  card={card}
+                  cards={cards}
+                  setPlacementPreview={setPlacementPreview}
+                  setEdgeHint={setEdgeHintPreview}
+                  autoFocus={card.id === focusCardId}
+                  focusedCardId={focusedCardId}
+                  spotlightActive={card.id === spotlightCardId}
+                  isCut={cutCardId === card.id}
+                  onCut={() => setCutCardId(card.id)}
+                  setFocusedCardId={setFocusedCardId}
+                  
+                  onType={() => {
+                    console.log("ONBOARDING: onType called, current step =", onboardingStep);
+                    if (onboardingStep === 3) {
+                      console.log("ONBOARDING: 3 → 4");
+                      void setOnboarding(4);
+                    }
+                  }}
+                  
                   onChange={changeCard}
                   onActivate={() => {
-                      
                     const zIndex = nextZIndex.current++;
-
                     setCardZIndexes((current) => ({
                       ...current,
                       [card.id]: zIndex,
@@ -864,16 +850,15 @@ export function App() {
                     setCards((current) =>
                       current.filter((item) => item.id !== id)
                     );
-                      if (focusedCardId === id) {
-                           setFocusedCardId(null);
-                         }
+                    if (focusedCardId === id) {
+                      setFocusedCardId(null);
+                    }
                     void deleteCard(id);
                   }}
                 />
-              </motion.div>
             ))}
           </AnimatePresence>
-          
+
           <AnimatePresence>
             {placementPreview && (
               <motion.div

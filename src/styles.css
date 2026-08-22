@@ -37,7 +37,7 @@ button, input, textarea {
   user-select: none;
   -webkit-user-select: none;
   background: transparent !important;
-  z-index: 2; 
+  z-index: 2;
 }
 
 /* ==========================================================================
@@ -67,7 +67,7 @@ button, input, textarea {
   -webkit-backdrop-filter: blur(16px);
   
   /* БЫЛО: overflow: hidden (срезало мышь с ресайза). ТЕПЕРЬ: авто-скрытие только для текста */
-  overflow: visible;
+  overflow: hidden;
   
   /* Исправлено: удалена лишняя запятая, интерполяция работает идеально */
   transition:
@@ -128,6 +128,16 @@ button, input, textarea {
   border-radius: 16px; /* Закругляем внутренний скролл-контейнер */
   position: relative;
   z-index: 2;
+
+-webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+}
+
+/* Скрываем полосу прокрутки WebKit, чтобы не ломать визуал */
+.card-textarea::-webkit-scrollbar {
+width: 0px;
+background: transparent;
+}
 }
 
 .card-textarea p,
@@ -749,4 +759,137 @@ button, input, textarea {
 
 .startup-hint-text span {
   opacity: 0.5;
+}
+
+
+/* ==========================================================================
+   ФРОНТЕНД СТИЛИ ДЛЯ ТЭГОВ (ПО МАКЕТУ)
+   ========================================================================== */
+.tag-container {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Кнопка-триггер (круглая точка в углу) */
+.tag-trigger {
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1); /* Серая нейтральная точка в покое на ховере */
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.tag-trigger:hover {
+  transform: scale(1.2);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+/* Показываем точку при наведении на саму карточку */
+.card:hover .tag-trigger,
+.card:focus-within .tag-trigger {
+  opacity: 1;
+}
+
+/* Если тэг выбран — точка горит цветом ВСЕГДА (даже когда мышь ушла с карточки) */
+.tag-trigger.has-tag {
+  opacity: 1 !important;
+}
+
+/* Всплывающая Liquid Glass панелька (теперь 4х2) */
+.tag-palette {
+  /* Переключаем на Grid для формирования двух рядов по 4 точки */
+  display: grid;
+  grid-template-columns: repeat(4, 14px); /* 4 колонки строго под размер точек */
+  gap: 8px; /* Расстояние между точками во все стороны */
+  
+  padding: 8px;
+  border-radius: 12px; /* Чуть уменьшили скругление, так как форма стала более квадратной */
+  background: rgba(10, 10, 10, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
+
+  /* Позиционируем так, чтобы левый верхний угол палитры (где серая точка)
+     вставал ровно поверх триггера карточки */
+  position: absolute;
+  top: -8px;  /* Компенсируем паддинг палитры */
+  right: -8px; /* Компенсируем паддинг палитры, чтобы угловая точка совпала */
+}
+
+/* Цветные точки внутри палитры */
+.palette-dot {
+    width: 12px;
+     height: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+/* ЭФФЕКТ ДЛЯ СЕРОЙ ТОЧКИ: ПРЕВРАЩАЕМ В ЗНАК ОТМЕНЫ */
+/* Если у карточки выбран любой цвет (card.tagColor существует),
+   мы трансформируем серую точку в палитре в перечеркнутый кружок */
+.card-focused .palette-dot.gray,
+.card:hover .palette-dot.gray {
+  position: relative;
+  background-color: transparent !important;
+  border: 2px solid #AAAAAA !important;
+  box-sizing: border-box;
+}
+
+/* Рисуем диагональную линию внутри серой точки */
+.card-focused .palette-dot.gray::before,
+.card:hover .palette-dot.gray::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 2px; /* Тонкая линия перечеркивания */
+  background: #AAAAAA;
+  /* Поворачиваем строго по диагонали и центрируем */
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+
+/* Скрываем стандартный белый маркер `.selected` (точку в центре) конкретно для серой кнопки,
+   так как знак перечеркивания сам по себе является индикатором действия */
+.palette-dot.gray.selected::after {
+  display: none !important;
+}
+
+
+.palette-dot:hover {
+  transform: scale(1.2);
+  filter: brightness(1.15);
+}
+
+/* Белый маркер активного цвета в центре */
+.palette-dot.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4px; /* Было 3px */
+  height: 4px; /* Было 3px */
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+
+.card-focused, .card {
+  position: absolute !important;
 }
