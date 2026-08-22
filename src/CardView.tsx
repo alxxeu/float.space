@@ -189,7 +189,9 @@ export function CardView({
     onType,
     zIndex,
     setPlacementPreview,
-    setEdgeHint
+    setEdgeHint,
+    isCut = false,
+      onCut = () => {}
 }: {
     card: Card;
     cards: Card[];
@@ -219,6 +221,8 @@ export function CardView({
         height: number;
       } | null
     ) => void;
+    isCut?: boolean;
+     onCut?: () => void;
 }) {
     const start = useRef<{
         x: number;
@@ -227,6 +231,8 @@ export function CardView({
         latest: Card;
         mode: "move" | "resize";
     }>();
+    
+    
     
     const textareaRef = useRef<HTMLDivElement | null>(null);
     const firstLineBoldRef = useRef(false);
@@ -601,19 +607,34 @@ export function CardView({
         }
     }
     
+    const canvasElement = textareaRef.current?.closest(".canvas");
+    const canvasWidth = canvasElement?.clientWidth ?? window.innerWidth;
+    const canvasHeight = canvasElement?.clientHeight ?? window.innerHeight;
+
+    const renderX = Math.max(
+        CANVAS_SIDE_PADDING,
+        Math.min(card.x, canvasWidth - CANVAS_SIDE_PADDING - card.width)
+    );
+    const renderY = Math.max(
+        TOP_CREATION_LIMIT,
+        Math.min(card.y, canvasHeight - CANVAS_SIDE_PADDING - card.height)
+    );
+    
     return (
-            <motion.article
-            className={`card ${
-              focusedCardId === card.id ? "card-focused" : ""
-            } ${spotlightActive ? "card-spotlight-found" : ""}`}
-            style={{
-                left: card.x,
-                top: card.y,
-                width: card.width,
-                height: card.height,
-                zIndex,
-            }}
-            initial={{ opacity: 1, scale: 1 }}
+        <motion.article
+        className={`card ${
+          focusedCardId === card.id ? "card-focused" : ""
+        } ${spotlightActive ? "card-spotlight-found" : ""}`}
+        style={{
+            left: renderX,  // ИСПОЛЬЗУЕМ СКОРРЕКТИРОВАННЫЙ X
+            top: renderY,   // ИСПОЛЬЗУЕМ СКОРРЕКТИРОВАННЫЙ Y
+            width: card.width,
+            height: card.height,
+            zIndex,
+            opacity: isCut ? 0.4 : 1,
+            filter: isCut ? "grayscale(30%)" : "none",
+        }}
+        initial={{ opacity: 1, scale: 1 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{
                 opacity: 0,
@@ -644,6 +665,31 @@ export function CardView({
               suppressContentEditableWarning
               spellCheck={false}
               aria-label="Card text"
+            
+            onPaste={(event) => {
+              event.preventDefault();
+
+              // Получаем чистый текст без стилей
+              const text = event.clipboardData.getData("text/plain").trim();
+
+              // Регулярное выражение для проверки, является ли вставляемый текст ссылкой (http/https/www)
+              const urlRegex = /^(https?:\/\/[^\s]+|www\.[^\s]+)$/i;
+
+              if (urlRegex.test(text)) {
+                // Если это ссылка, формируем правильный URL для атрибута href
+                const href = text.startsWith("www.") ? `https://${text}` : text;
+                
+                // Создаем HTML-строку с тегом ссылки
+                const linkHtml = `<a href="${href}" target="_blank" rel="noopener noreferrer">${text}</a>`;
+                
+                // Вставляем ссылку как HTML-элемент в позицию курсора
+                document.execCommand("insertHTML", false, linkHtml);
+              } else {
+                // Если это обычный текст, вставляем его без изменений
+                document.execCommand("insertText", false, text);
+              }
+            }}
+
             
             onClick={(event) => {
               const target = event.target as HTMLElement;
@@ -695,6 +741,21 @@ export function CardView({
             onFocus={() => {
               setFocusedCardId(card.id);
               onActivate();
+
+              if (!card.text && textareaRef.current) {
+                textareaRef.current.innerHTML = "<b><br></b>";
+
+                const range = document.createRange();
+                const selection = window.getSelection();
+
+                range.selectNodeContents(textareaRef.current);
+                range.collapse(false);
+
+                selection?.removeAllRanges();
+                selection?.addRange(range);
+
+                firstLineBoldRef.current = true;
+              }
             }}
             
             onInput={(event) => {
@@ -711,7 +772,82 @@ export function CardView({
               }
             }}
             
-            onKeyDown={(event) => {
+                onKeyDown={(event) => {
+                    
+                    // === НАЧАЛО БЛОКА ВЫРЕЗАНИЯ КАРТОЧКИ (Шаг 3) ===
+                    // Перехватываем Cmd+X (Mac)
+                    const isCutShortcut = (event.metaKey) && event.key.toLowerCase() === "x";
+                    
+                    // Проверяем, что шорткат нажат, но при этом пользователь НЕ выделил мышкой текст внутри карточки
+                    if (isCutShortcut && window.getSelection()?.toString() === "") {
+                      event.preventDefault(); // Отменяем стандартное вырезание букв
+                      onCut();                // Вызываем функцию вырезания карточки целиком
+                      return;
+                    }
+                    
+                  // === НАЧАЛО БЛОКА АВТОЗАМЕНЫ ТИРЕ НА ЛИНИЮ ===
+                  if (event.key === "Enter") {
+                    const selection = window.getSelection();
+                    if (selection && selection.rangeCount > 0) {
+                      const range = selection.getRangeAt(0);
+                      const textNode = range.startContainer;
+                      
+                      if (textNode.nodeType === Node.TEXT_NODE) {
+                        const content = textNode.textContent || "";
+                        const offset = range.startOffset;
+                        const textBeforeCursor = content.substring(0, offset);
+                        
+                        // Регулярное выражение строго ищет от 3 до 20 тире в конце строки перед курсором
+                        const dashRegex = /(-{3,20})$/;
+                        const match = textBeforeCursor.match(dashRegex);
+                        
+                        if (match) {
+                          event.preventDefault(); // Отменяем стандартный Enter
+                          
+                          const matchedText = match[0];
+                          const matchLength = matchedText.length;
+                          const startOffset = offset - matchLength;
+                          
+                          // Удаляем именно тире без выделения всего текста
+                          textNode.deleteData(startOffset, matchLength);
+                          
+                          // Создаем саму линию
+                          const hr = document.createElement("hr");
+                          hr.className = "card-divider";
+                          hr.style.border = "none";
+                          hr.style.borderTop = "1px solid rgba(128, 128, 128, 0.3)";
+                          hr.style.margin = "12px 0";
+                          hr.setAttribute("contenteditable", "false");
+                          
+                          // Создаем элемент переноса строки, чтобы курсор упал на новую строчку вниз
+                          const br = document.createElement("br");
+                          
+                          // Аккуратно вставляем линию и перенос в позицию курсора
+                          range.insertNode(br);
+                          range.insertNode(hr);
+                          
+                          // Переносим курсор за только что вставленный перенос строки <br>
+                          range.setStartAfter(br);
+                          range.setEndAfter(br);
+                          selection.removeAllRanges();
+                          selection.addRange(range);
+                          
+                          // Принудительно отключаем первый жирный шрифт, если линия была создана на первой строчке
+                          firstLineBoldRef.current = false;
+                          
+                          // Сохраняем изменения на бэкенде в Rust
+                          if (textareaRef.current) {
+                            onChange({
+                              ...card,
+                              text: textareaRef.current.innerHTML,
+                            });
+                          }
+                          return;
+                        }
+                      }
+                    }
+                  }
+                    
               if (
                 event.key === "Enter" &&
                 firstLineBoldRef.current
@@ -719,8 +855,6 @@ export function CardView({
                 event.preventDefault();
 
                 document.execCommand("insertParagraph");
-
-                // Выключаем bold уже после создания новой строки
                 document.execCommand("bold", false, "false");
 
                 firstLineBoldRef.current = false;

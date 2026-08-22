@@ -27,6 +27,8 @@ import {
   updateCard,
   updateWorkspace,
   setOverlayMode,
+    activateFloatspace,
+    bringFloatspaceToFront,
   minimizeOtherWindows,
 } from "./native";
 
@@ -79,10 +81,10 @@ export function App() {
   const [focusCardId, setFocusCardId] = useState<string | null>(null);
   const [focusedCardId, setFocusedCardId] = useState<string | null>(null);
   const [spotlightCardId, setSpotlightCardId] = useState<string | null>(null);
+  const [cutCardId, setCutCardId] = useState<string | null>(null);
   const [cardsWorkspaceId, setCardsWorkspaceId] = useState<string | null>(null);
   const [cardZIndexes, setCardZIndexes] = useState<Record<string, number>>({});
   const nextZIndex = useRef(1);
-  const [isMenuOpen, setMenuOpen] = useState(false);
   const [draft, setDraft] = useState<DraftCard>();
   const [placementPreview, setPlacementPreview] = useState<{
       x: number;
@@ -194,17 +196,69 @@ export function App() {
       };
     }, []);
     
-  const canvasRef = useRef<HTMLElement>(null);
-  const creationStart = useRef<{ x: number; y: number }>();
-  const draftRef = useRef<DraftCard>();
-  const didDragToCreate = useRef(false);
-  const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
-  const [showStartupHint, setShowStartupHint] = useState(false);
-  const showStartupHintRef = useRef(false);
-  const [showQuitHint, setShowQuitHint] = useState(false);
-  const [isCreatingCard, setIsCreatingCard] = useState(false);
+    const canvasRef = useRef<HTMLElement>(null);
+    const creationStart = useRef<{ x: number; y: number }>();
+    const draftRef = useRef<DraftCard>();
+    const didDragToCreate = useRef(false);
+    const saveTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+    const [showStartupHint, setShowStartupHint] = useState(false);
+    const showStartupHintRef = useRef(false);
+    const [showQuitHint, setShowQuitHint] = useState(false);
+    const [isCreatingCard, setIsCreatingCard] = useState(false);
+    const [, setWindowDimensions] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+     useEffect(() => {
+       const handleResize = () => {
+         setWindowDimensions({ width: window.innerWidth, height: window.innerHeight });
+       };
+       window.addEventListener("resize", handleResize);
+       return () => window.removeEventListener("resize", handleResize);
+     }, []);
     
-    
+    useEffect(() => {
+      const handleGlobalKeyDown = (event: KeyboardEvent) => {
+        // Кликнули на пустом месте холста и нажали Cmd+V или Alt+V для вставки карточки
+        const isPaste = (event.metaKey || event.ctrlKey || event.altKey) && event.key.toLowerCase() === "v";
+        
+        // Проверяем, что фокус не находится внутри какого-то текстового поля, чтобы не ломать стандартную вставку текста
+        const isTextInput = document.activeElement?.getAttribute("contenteditable") === "true" ||
+                            document.activeElement?.tagName === "INPUT" ||
+                            document.activeElement?.tagName === "TEXTAREA";
+
+        if (isPaste && cutCardId && !isTextInput) {
+          event.preventDefault();
+
+          // 1. Находим вырезанную карточку среди всех имеющихся
+          const cardToMove = cards.find(c => c.id === cutCardId);
+          if (!cardToMove) {
+            setCutCardId(null);
+            return;
+          }
+
+          // 2. Меняем ей workspace_id на ID текущего активного пространства (спэйса)
+          // Также центрируем её на новом экране, чтобы она не потерялась
+          const updatedCard = {
+            ...cardToMove,
+            workspace_id: activeWorkspaceId, // Переносим в текущий спэйс
+            x: window.innerWidth / 2 - cardToMove.width / 2, // По центру экрана
+            y: window.innerHeight / 2 - cardToMove.height / 2
+          };
+
+          // 3. Отправляем запрос в базу данных Rust на обновление карточки
+          void invoke("update_card", { card: updatedCard })
+            .then(() => {
+              // Обновляем локальный стейт, чтобы карточка исчезла из старого спэйса и появилась в новом
+              setCards(prev => prev.map(c => c.id === cutCardId ? updatedCard : c));
+              setCutCardId(null); // Очищаем буфер
+            })
+            .catch(err => console.error("Failed to move card:", err));
+        }
+      };
+
+      window.addEventListener("keydown", handleGlobalKeyDown);
+      return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+    }, [cutCardId, activeWorkspaceId, cards]);
+
 
     useEffect(() => {
         void loadWorkspaces().then(async (loaded) => {
@@ -418,11 +472,13 @@ export function App() {
               workspace.slot
             );
 
-            await setOverlayMode(false, true);
-            setIsFloatspaceLayer(true);
-            setActiveWorkspaceId(workspace.id);
-            setFocusCardId(card.id);
-            setSpotlightCardId(card.id);
+              await setOverlayMode(false, true);
+              await bringFloatspaceToFront();
+
+              setIsFloatspaceLayer(true);
+              setActiveWorkspaceId(workspace.id);
+              setFocusCardId(card.id);
+              setSpotlightCardId(card.id);
 
               window.setTimeout(() => {
                 setSpotlightCardId((current) =>
@@ -677,13 +733,6 @@ export function App() {
       });
     }
     
-  async function addWorkspace() {
-    if (workspaces.length >= 10) return;
-    const workspace = await createWorkspace(`Space ${workspaces.length + 1}`);
-    setWorkspaces((current) => [...current, workspace]);
-    setActiveWorkspaceId(workspace.id);
-    setMenuOpen(false);
-  }
     async function setOnboarding(step: OnboardingStep) {
         
         if (step === 1) {
@@ -701,43 +750,6 @@ export function App() {
 
   return (
     <main className="app-shell" aria-label="Floatspace">
-      <header className="topbar" onPointerEnter={() => setMenuOpen(true)} onPointerLeave={() => setMenuOpen(false)}>
-        <AnimatePresence>
-          {isMenuOpen && activeWorkspace && (
-            <motion.div
-              className="workspace-menu"
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-            >
-              {workspaces.map((workspace) => (
-                <div
-                  key={workspace.id}
-                  className={`workspace-item ${
-                    workspace.id === activeWorkspaceId ? "active" : ""
-                  }`}
-                >
-                  <button
-                    className="workspace-button"
-                    onClick={() => setActiveWorkspaceId(workspace.id)}
-                  >
-                    {workspace.name || `SPACE ${workspace.slot}`}
-                  </button>
-                </div>
-              ))}
-
-              {workspaces.length < 10 && (
-                <button
-                  className="new-space"
-                  onClick={() => void addWorkspace()}
-                >
-                  New space
-                </button>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </header>
           <AnimatePresence>
             {isFloatspaceLayer && !showStartupHint && (
               <motion.div
@@ -816,6 +828,7 @@ export function App() {
                 }}
               >
                 <CardView
+                key={card.id}
                 card={card}
                 cards={cards}
                 setPlacementPreview={setPlacementPreview}
@@ -823,6 +836,8 @@ export function App() {
                 autoFocus={card.id === focusCardId}
                 focusedCardId={focusedCardId}
                 spotlightActive={card.id === spotlightCardId}
+                isCut={cutCardId === card.id} // Передаем флаг, вырезана ли эта конкретная карточка
+                onCut={() => setCutCardId(card.id)} // Функция для активации вырезания
                 setFocusedCardId={setFocusedCardId}
                                   
                                   onType={() => {

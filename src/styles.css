@@ -6,63 +6,92 @@
   text-rendering: optimizeLegibility;
 }
 
- * {
-    box-sizing: border-box;
-  }
+* {
+  box-sizing: border-box;
+}
 
-html, body, #root { width: 100%;   height: 100%; min-width: 320px; min-height: 100%; margin: 0;   overflow: hidden; background: transparent; }
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+}
 
-button, input, textarea { font: inherit; }
+button, input, textarea {
+  font: inherit;
+}
 
-.app-shell { min-height: 100vh; overflow: hidden; background: transparent; }
+.app-shell {
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
 
-.topbar { position: fixed; z-index: 5; top: 0; left: 0; width: 64px; height: 100%; }
+.canvas {
+  position: relative;
+  min-height: 100vh;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent !important;
+}
 
-.workspace-menu { width: 208px; margin-top: 10px; padding: 6px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; background: rgb(38 38 38 / 92%); box-shadow: 0 12px 36px rgb(0 0 0 / 25%); backdrop-filter: blur(18px); }
-.workspace-menu button { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; border: 0; border-radius: 6px; color: rgb(255 255 255 / 65%); background: transparent; text-align: left; cursor: pointer; }
-.workspace-menu button:hover, .workspace-menu button.active { color: #fff; background: rgb(255 255 255 / 9%); }
-.workspace-menu span { width: 16px; color: rgb(255 255 255 / 34%); font-size: 11px; }
-.workspace-menu .new-space { margin-top: 4px; border-top: 1px solid rgb(255 255 255 / 8%); border-radius: 0; color: rgb(255 255 255 / 48%); }
-.canvas { position: relative; min-height: 100vh; touch-action: none; user-select: none;
-    -webkit-user-select: none;}
-
+/* ==========================================================================
+   КОМПОНЕНТ КАРТОЧКИ (LIQUID GLASS + ИСПРАВЛЕННАЯ ПЛАВНОСТЬ ХОВЕРА)
+   ========================================================================== */
 .card {
   position: absolute;
   user-select: text;
   -webkit-user-select: text;
   display: flex;
+  flex-direction: column; /* Гарантирует правильную структуру слоев */
   min-width: 120px;
   min-height: 120px;
-  border: 1px solid rgb(255 255 255 / 4%);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
-  background: rgb(50 50 50 / 70%);
-  box-shadow: 0 8px 32px rgb(0 0 0 / 12%);
-  overflow: hidden;
-  transition:
-  background 400ms ease,
-  border-color 400ms ease,
-  box-shadow 400ms ease,
-  border 400ms ease,
-}
-
-.card:hover,
-.card.card-focused {
+  background: rgba(0, 0, 0, 0.30);
+  
+  /* Объёмный блик и тень нативного Liquid Glass */
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),                 /* Внешняя тень */
+    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.3),       /* Блик по верхнему краю */
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);              /* Мягкое затемнение снизу */
+  
+  /* Фиксируем блюр на одном значении. При ховере меняется только фон,
+     что убирает рывки рендеринга в WebKit */
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
+  
+  /* БЫЛО: overflow: hidden (срезало мышь с ресайза). ТЕПЕРЬ: авто-скрытие только для текста */
+  overflow: visible;
+  
+  /* Исправлено: удалена лишняя запятая, интерполяция работает идеально */
+  transition:
+    background 400ms ease,
+    border-color 400ms ease,
+    box-shadow 400ms ease;
 }
 
-.card-background {
-  position: absolute;
-  inset: 0;
-
-  background: rgb(255 255 255 / 8%);
-  opacity: 0;
-
-  pointer-events: none;
-
-  transition: opacity 500ms ease;
+/* Мягкий и глубокий Hover эффект */
+.card:hover {
+  background: rgba(0, 0, 0, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.25);
+  inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.5),       /* Блик по верхнему краю */
+  inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);              /* Мягкое затемнение снизу */
 }
 
+/* Состояние активного фокуса */
+.card.card-focused {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.1.5);
+  box-shadow:
+    0 16px 40px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.4);
+}
 
 .card-draft {
   pointer-events: none;
@@ -71,77 +100,147 @@ button, input, textarea { font: inherit; }
   box-shadow: 0 8px 32px rgb(0 0 0 / 8%);
 }
 
+/* ==========================================================================
+   ВНУТРЕННИЙ ТЕКСТ И ССЫЛКИ
+   ========================================================================== */
 .card-textarea {
   width: 100%;
   height: 100%;
   padding: 20px;
   box-sizing: border-box;
-
   overflow-y: auto;
   overflow-x: hidden;
-
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   word-break: break-word;
-
   outline: none;
   border: none;
   background: transparent;
-
   resize: none;
-
   cursor: text;
-
   -webkit-user-select: text;
   user-select: text;
-  
   color: rgb(255 255 255 / 88%);
-  background: transparent;
-  
   font-size: 15px;
   line-height: 1.5;
-
   caret-color: rgb(255 255 255 / 80%);
+  border-radius: 16px; /* Закругляем внутренний скролл-контейнер */
+  position: relative;
+  z-index: 2;
 }
+
 .card-textarea p,
 .card-textarea div {
   margin: 0;
   padding: 0;
 }
 
+/* Ссылки внутри карточек */
+.card-textarea a {
+  color: #007aff; /* Дефолтный нативный синий цвет Apple */
+  text-decoration: underline;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
 
+.card-textarea a:hover {
+  opacity: 0.75;
+}
+
+/* Разделительная линия из тире (наш <hr>) */
+.card-textarea hr.card-divider {
+  border: none;
+  border-top: 1px solid rgba(128, 128, 128, 0.3);
+  margin: 12px 0;
+  display: block;
+  user-select: none;
+}
+
+
+/* ==========================================================================
+   ИСПРАВЛЕНИЕ ИКОНКИ РАСТЯЖЕНИЯ (HITBOX)
+   ========================================================================== */
 .resize-handle {
-  z-index: 3;
+  position: absolute;
+  right: 0;
+   bottom: 0;
+   width: 18px;
+   height: 18px;
+  cursor: nwse-resize !important;
+  opacity: 0;
+  z-index: 999; /* Выталкиваем строго поверх скроллбаров и текста */
+  background: transparent;
+  transition: opacity 200ms ease;
 }
 
-.card-handle { position: absolute; top: 0; left: 0; right: 28px; height: 17px; cursor: grab; opacity: 0; }
-
-.card:hover {
-    border-color: rgb(255 255 255 / 18%);
-    box-shadow:
-        0 12px 40px rgb(0 0 0 / 16%);
+.resize-handle::after {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 9px;
+  height: 10px;
+  border-right: 2px solid rgb(255 255 255 / 42%);
+  border-bottom: 2px solid rgb(255 255 255 / 42%);
+  border-radius: 0 0 10px 0;
+  content: "";
+  pointer-events: none;
 }
-.card-handle:active { cursor: grabbing; }
 
-.card:hover .card-background {
+.card:hover .resize-handle,
+.card:focus-within .resize-handle {
   opacity: 1;
 }
 
-.delete-card { position: absolute; top: 5px; left: 5px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 10px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0;   z-index: 4;
-    
-    /* Новые свойства для выравнивания и толщины крестика */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-      height: 20px;
-      padding: 0;
-      border: none;
-      background: transparent;
-      cursor: pointer;
-    }
+/* ==========================================================================
+   СЕРВИСНЫЕ ЭЛЕМЕНТЫ (УДАЛЕНИЕ, ПЕРЕМЕЩЕНИЕ И ОВЕРЛЕИ)
+   ========================================================================== */
+.card-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 28px;
+  height: 25px;
+  cursor: grab;
+  opacity: 0;
+  z-index: 3;
+}
+
+.card-handle:active {
+  cursor: grabbing;
+}
+
+.delete-card {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: rgb(255 255 255 / 48%);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 200ms ease, background 150ms ease, color 150ms ease;
+}
+
+.card:hover .delete-card,
+.card:focus-within .delete-card {
+  opacity: 1;
+}
+
+.delete-card:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 10%);
+}
+
 .delete-progress {
-    fill: none;
+  fill: none;
   display: block;
   position: absolute;
   width: 22px;
@@ -152,8 +251,8 @@ button, input, textarea { font: inherit; }
 }
 
 .delete-progress-fill {
-    fill: none;
-    stroke-width: 1.5;
+  fill: none;
+  stroke-width: 1.5;
   stroke: rgba(255, 255, 255, 0.3);
   stroke-linecap: round;
   stroke-dasharray: 44;
@@ -170,14 +269,14 @@ button, input, textarea { font: inherit; }
   color: rgba(255, 255, 255, 0.9);
   transform: scale(0.9);
 }
-    .delete-card svg {
-      display: block;
-    }
-.card:hover .delete-card, .card:focus-within .delete-card { opacity: 1; }
-.delete-card:hover { color: #fff; background: rgb(255 255 255 / 10%); }
-.resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; }
-.resize-handle::after { position: absolute; right: 5px; bottom: 5px; width: 9px; height: 10px; border-right: 2px solid rgb(255 255 255 / 42%); border-bottom: 2px solid rgb(255 255 255 / 42%); border-radius: 0 0 10px 0; content: ""; }
-.card:hover .resize-handle, .card:focus-within .resize-handle { opacity: 1; }
+
+.delete-card svg {
+  display: block;
+}
+
+/* ==========================================================================
+   СИСТЕМНЫЕ ИНТЕРФЕЙСЫ И СЛУЖЕБНЫЕ СТИЛИ
+   ========================================================================== */
 .empty-space-note {
   position: absolute;
   top: 50%;
@@ -209,12 +308,10 @@ button, input, textarea { font: inherit; }
   display: inline-block;
   margin-bottom: 12px;
   padding: 2px 6px;
-
   font-size: 12px;
   font-weight: 1000;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-
   color: #fff;
   opacity: 0.4;
 }
@@ -227,24 +324,62 @@ button, input, textarea { font: inherit; }
   z-index: 1;
 }
 
-.canvas,
-.topbar {
-  position: relative;
-  z-index: 2;
+.canvas-edge-hint {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgb(255 255 255 / 30%);
+  filter: blur(1px);
+  border-radius: 999px;
 }
 
+.card-placement-preview {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+  filter: blur(1px);
+  z-index: 9999;
+}
 
-/* onboarding */
+.canvas.is-creating-card,
+.canvas.is-creating-card * {
+  user-select: none;
+  -webkit-user-select: none;
+}
 
+.card-handle {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.card-spotlight-found {
+  animation: spotlight-found 2s ease-out;
+}
+
+@keyframes spotlight-found {
+  0% {
+    box-shadow:
+      0 0 0 2px rgb(255 255 255 / 35%),
+      0 0 30px rgb(255 255 255 / 15%);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* ==========================================================================
+   ONBOARDING & WORKSPACE LABEL
+   ========================================================================== */
 .onboarding-layer {
   position: fixed;
   inset: 0;
   z-index: 9999;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   pointer-events: none;
 }
 
@@ -255,16 +390,12 @@ button, input, textarea { font: inherit; }
 .onboarding-card {
   width: min(360px, calc(100vw - 48px));
   padding: 24px 26px;
-
   border: 1px solid rgb(255 255 255 / 11%);
   border-radius: 20px;
-
   background: rgb(38 38 38);
-
   box-shadow:
     0 20px 60px rgb(0 0 0 / 24%),
     inset 0 1px 0 rgb(255 255 255 / 4%);
-
   color: rgb(255 255 255 / 90%);
 }
 
@@ -275,9 +406,7 @@ button, input, textarea { font: inherit; }
 
 .onboarding-eyebrow {
   margin-bottom: 9px;
-
   color: rgb(255 255 255 / 38%);
-
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.12em;
@@ -285,7 +414,6 @@ button, input, textarea { font: inherit; }
 
 .onboarding-title {
   max-width: 300px;
-
   font-size: 21px;
   font-weight: 500;
   line-height: 1.2;
@@ -294,9 +422,7 @@ button, input, textarea { font: inherit; }
 
 .onboarding-text {
   margin-top: 10px;
-
   color: rgb(255 255 255 / 54%);
-
   font-size: 13px;
   line-height: 1.5;
 }
@@ -305,11 +431,8 @@ button, input, textarea { font: inherit; }
   display: grid;
   grid-template-columns: 32px 1fr;
   gap: 7px 9px;
-
   margin-top: 18px;
-
   color: rgb(255 255 255 / 42%);
-
   font-size: 11px;
 }
 
@@ -322,24 +445,16 @@ button, input, textarea { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   width: 100%;
   margin-top: 20px;
   padding: 9px 11px;
-
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 9px;
-
   background: rgb(255 255 255 / 7%);
   color: rgb(255 255 255 / 88%);
-
   font-size: 12px;
-
   cursor: pointer;
-
-  transition:
-    background 160ms ease,
-    border-color 160ms ease;
+  transition: background 160ms ease, border-color 160ms ease;
 }
 
 .onboarding-action:hover {
@@ -349,36 +464,28 @@ button, input, textarea { font: inherit; }
 
 .onboarding-action kbd {
   color: rgb(255 255 255 / 38%);
-
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 10px;
 }
 
 .onboarding-hint {
   margin-top: 18px;
-
   color: rgb(255 255 255 / 32%);
-
   font-size: 11px;
 }
 
 .onboarding-progress {
   display: flex;
   gap: 6px;
-
   margin-bottom: 14px;
 }
 
 .onboarding-dot {
   width: 5px;
   height: 5px;
-
   border-radius: 50%;
   background: rgb(255 255 255 / 18%);
-
-  transition:
-    background 200ms ease,
-    transform 200ms ease;
+  transition: background 200ms ease, transform 200ms ease;
 }
 
 .onboarding-dot.active {
@@ -397,118 +504,83 @@ button, input, textarea { font: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-
   min-width: 30px;
   height: 30px;
   padding: 0 8px;
-
   box-sizing: border-box;
-
   border: 1px solid rgba(255, 255, 255, 0.14);
   border-radius: 7px;
-
   background: rgba(255, 255, 255, 0.07);
-
   color: rgba(255, 255, 255, 0.85);
-
   font-family: inherit;
   font-size: 12px;
   font-weight: 500;
   line-height: 1;
-
   box-shadow:
     0 2px 0 rgba(0, 0, 0, 0.25),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
-
-/* onboarding */
 
 .workspace-label {
   position: fixed;
   top: 42px;
   left: 50%;
   transform: translateX(-50%);
-
   z-index: 1000;
-
   padding: 5px 10px;
-
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
   font-size: 12px;
   font-weight: 800;
   line-height: 16px;
-
   color: rgba(255, 255, 255, 0.72);
-
   border: 1px solid transparent;
   border-radius: 8px;
-
   background: transparent;
-
   cursor: text;
   pointer-events: auto;
   user-select: none;
-
   white-space: nowrap;
-
-  transition:
-    background 120ms ease,
-    border-color 120ms ease,
-    box-shadow 120ms ease;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .workspace-label:hover {
   background: rgba(30, 30, 30, 0.42);
-
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.12);
-
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(6px);
 }
 
 .workspace-label.editing {
   background: rgba(30, 30, 30, 0.42);
   border-color: rgba(255, 255, 255, 0.08);
-
-  box-shadow:
-    0 2px 10px rgba(0, 0, 0, 0.12);
-
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
 
 .workspace-label-input {
   width: 140px;
-
   padding: 0;
   margin: 0;
-
   border: none;
   outline: none;
-
   background: transparent;
   color: rgba(255, 255, 255, 0.9);
-
   font: inherit;
   font-size: inherit;
   font-weight: inherit;
   line-height: inherit;
-
   text-align: center;
 }
-
-/* 5 step */
 
 .onboarding-finish-hint {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   width: 100%;
   min-height: 50px;
   margin-top: 20px;
-  padding: 20px 20px;
+  padding: 20px;
   box-sizing: border-box;
   border-radius: 10px;
   background: rgb(255 255 255 / 3%);
@@ -542,7 +614,6 @@ button, input, textarea { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: center;
-
   margin-left: 32px;
 }
 
@@ -556,13 +627,10 @@ button, input, textarea { font: inherit; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   width: 100%;
   margin-top: 26px;
   padding: 18px 20px;
-
   box-sizing: border-box;
-
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 10px;
 }
@@ -590,33 +658,23 @@ button, input, textarea { font: inherit; }
 
 .integration-button {
   flex-shrink: 0;
-
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-
   min-width: 76px;
   height: 34px;
   margin-left: 20px;
   padding: 0 12px;
-
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 9px;
-
   background: rgb(255 255 255 / 9%);
   color: rgb(255 255 255 / 78%);
-
   font: inherit;
   font-size: 12px;
   font-weight: 500;
-
   cursor: pointer;
-
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    opacity 0.15s ease;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
 }
 
 .integration-button:hover:not(:disabled) {
@@ -642,60 +700,36 @@ button, input, textarea { font: inherit; }
   line-height: 1;
 }
 
-/* 5 step */
-/* onboarding */
-
-/* Startup hint*/
-
 .startup-hint {
   position: fixed;
-
-  /*
-   * Не используем transform: translateX().
-   * Framer Motion сам управляет transform.
-   */
   left: 0;
   right: 0;
   top: 50px;
-
   width: 300px;
   height: 80px;
   box-sizing: border-box;
-
   margin-inline: auto;
-
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-
   padding: 14px 24px;
-
   border-radius: 999px;
-
   background: rgba(40, 40, 40, 0.72);
-
   border: 1px solid rgba(255, 255, 255, 0.22);
-
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
-
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-
   color: white;
-
   text-align: center;
-
   z-index: 999999;
-
   pointer-events: none;
 }
 
 .startup-hint-title {
   margin-bottom: 7px;
-
   font-size: 16px;
   line-height: 1.1;
   font-weight: 600;
@@ -707,70 +741,11 @@ button, input, textarea { font: inherit; }
   align-items: center;
   justify-content: center;
   gap: 5px;
-
   font-size: 12px;
   line-height: 1.2;
-
   color: rgba(255, 255, 255, 0.7);
 }
 
 .startup-hint-text span {
   opacity: 0.5;
-}
-
-/* Startup hint*/
-
-.canvas.is-creating-card,
-.canvas.is-creating-card * {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.card-handle,
-.resize-handle {
-  user-select: none;
-  -webkit-user-select: none;
-  touch-action: none;
-}
-
-.card-placement-preview {
-  position: absolute;
-  pointer-events: none;
-  box-sizing: border-box;
-
-  
-  border-radius: 12px;
-  background: rgb(255 255 255 / 5%);
-  filter: blur(1px);
-
-  z-index: 9999;
-}
-
-.canvas-edge-hint {
-  position: absolute;
-  pointer-events: none;
-  z-index: 9999;
-  background: rgb(255 255 255 / 30%);
-  filter: blur(1px);
-  border-radius: 999px;
-}
-
-.card-textarea a {
-  cursor: pointer;
-}
-
-.card-spotlight-found {
-  animation: spotlight-found 2s ease-out;
-}
-
-@keyframes spotlight-found {
-  0% {
-    box-shadow:
-      0 0 0 2px rgb(255 255 255 / 35%),
-      0 0 30px rgb(255 255 255 / 15%);
-  }
-
-  100% {
-    box-shadow: none;
-  }
 }

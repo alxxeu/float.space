@@ -62,3 +62,11 @@ export async function setOverlayMode(
 export async function minimizeOtherWindows(): Promise<void> {
   return invoke("minimize_other_windows");
 }
+
+export async function activateFloatspace(): Promise<void> {
+  return invoke("activate_floatspace");
+}
+
+export async function bringFloatspaceToFront(): Promise<void> {
+  return invoke("bring_floatspace_to_front");
+}
