@@ -138,7 +138,9 @@ impl Database {
         Ok(())
     }
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
-        let mut statement = self.connection.prepare("SELECT id, workspace_id, text, x, y, width, height FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC")?;
+        let mut statement = self.connection.prepare(
+            "SELECT id, workspace_id, text, x, y, width, height, tag_color FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC"
+        )?;
         let cards = statement
             .query_map([workspace_id], Self::card_from_row)?
             .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -146,7 +148,7 @@ impl Database {
         Ok(cards)
     }
 
-    pub fn create_card(&self, new_card: NewCard) -> rusqlite::Result<Card> {
+      pub fn create_card(&self, new_card: NewCard) -> rusqlite::Result<Card> {
         let card = Card {
             id: Uuid::new_v4().to_string(),
             workspace_id: new_card.workspace_id,
@@ -157,12 +159,45 @@ impl Database {
             height: new_card.height,
             tag_color: None,
         };
-        self.connection.execute("INSERT INTO cards (id, workspace_id, text, x, y, width, height) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![card.id, card.workspace_id, card.text, card.x, card.y, card.width, card.height])?;
+        self.connection.execute(
+            "INSERT INTO cards (id, workspace_id, text, x, y, width, height, tag_color) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![
+                card.id,
+                card.workspace_id,
+                card.text,
+                card.x,
+                card.y,
+                card.width,
+                card.height,
+                card.tag_color,
+            ]
+        )?;
         Ok(card)
     }
 
     pub fn update_card(&self, card: Card) -> rusqlite::Result<()> {
-        self.connection.execute("UPDATE cards SET text = ?1, x = ?2, y = ?3, width = ?4, height = ?5, updated_at = CURRENT_TIMESTAMP WHERE id = ?6", params![card.text, card.x, card.y, card.width, card.height, card.id])?;
+        self.connection.execute(
+            "UPDATE cards
+             SET workspace_id = ?1,
+                 text = ?2,
+                 x = ?3,
+                 y = ?4,
+                 width = ?5,
+                 height = ?6,
+                 tag_color = ?7,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = ?8",
+            params![
+                card.workspace_id, // ?1
+                card.text,         // ?2
+                card.x,            // ?3
+                card.y,            // ?4
+                card.width,        // ?5
+                card.height,       // ?6
+                card.tag_color,    // ?7
+                card.id,           // ?8
+            ]
+        )?;
         Ok(())
     }
 
