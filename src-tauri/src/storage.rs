@@ -21,6 +21,7 @@ pub struct Card {
     pub(crate) y: f64,
     pub(crate) width: f64,
     pub(crate) height: f64,
+    pub(crate) tag_color: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -41,6 +42,8 @@ pub struct Database {
 impl Database {
     pub fn open(path: PathBuf) -> rusqlite::Result<Self> {
         let connection = Connection::open(path)?;
+        
+        // 1. Создаем базовые таблицы в рамках одной валидной SQL строки
         connection.execute_batch(
             "
             PRAGMA foreign_keys = ON;
@@ -65,20 +68,26 @@ impl Database {
             CREATE INDEX IF NOT EXISTS cards_workspace_id_idx ON cards(workspace_id);
             
             CREATE TABLE IF NOT EXISTS onboarding (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    completed INTEGER NOT NULL DEFAULT 0,
-    step INTEGER NOT NULL DEFAULT 0
-);
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              completed INTEGER NOT NULL DEFAULT 0,
+              step INTEGER NOT NULL DEFAULT 0
+            );
 
-INSERT OR IGNORE INTO onboarding (id, completed, step)
-VALUES (1, 0, 0);
-            ",
+            INSERT OR IGNORE INTO onboarding (id, completed, step)
+            VALUES (1, 0, 0);
+            "
         )?;
+
+        // 2. Безопасно добавляем колонку для старых баз данных средствами Rust
+        let _ = connection.execute(
+            "ALTER TABLE cards ADD COLUMN tag_color TEXT",
+            []
+        );
 
         let database = Self { connection };
         database.ensure_default_workspace()?;
         Ok(database)
-    }
+        }
 
     pub fn list_workspaces(&self) -> rusqlite::Result<Vec<Workspace>> {
         let mut statement = self
@@ -146,6 +155,7 @@ VALUES (1, 0, 0);
             y: new_card.y,
             width: new_card.width,
             height: new_card.height,
+            tag_color: None,
         };
         self.connection.execute("INSERT INTO cards (id, workspace_id, text, x, y, width, height) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![card.id, card.workspace_id, card.text, card.x, card.y, card.width, card.height])?;
         Ok(card)
@@ -194,6 +204,7 @@ VALUES (1, 0, 0);
             y: row.get(4)?,
             width: row.get(5)?,
             height: row.get(6)?,
+            tag_color: row.get(7).ok(),
         })
     }
 
