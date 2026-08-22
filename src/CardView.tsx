@@ -945,7 +945,6 @@ export function CardView({
                 return;
               }
             }}
-            onBlur={handleBlur}
             />
 
             <div
