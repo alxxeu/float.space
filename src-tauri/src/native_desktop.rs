@@ -27,6 +27,32 @@ pub fn configure<R: Runtime>(
     apply_mode(window, Mode::Desktop)
 }
 
+#[cfg(target_os = "macos")]
+pub fn activate_app() -> tauri::Result<()> {
+    use objc2_app_kit::{
+        NSApplicationActivationOptions,
+        NSRunningApplication,
+    };
+
+    let app = NSRunningApplication::currentApplication();
+
+    let activated =
+        app.activateWithOptions(NSApplicationActivationOptions::empty());
+
+    if !activated {
+        return Err(tauri::Error::AssetNotFound(
+            "Floatspace activation was rejected by macOS".into(),
+        ));
+    }
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn activate_app() -> tauri::Result<()> {
+    Ok(())
+}
+
 pub fn apply_mode<R: Runtime>(
     window: &WebviewWindow<R>,
     mode: Mode,
@@ -74,21 +100,9 @@ fn apply_macos_mode<R: Runtime>(
 
     native_window.setHasShadow(false);
 
-    // Это поведение было в ранней рабочей версии.
-    //
-    // CanJoinAllSpaces:
-    // окно существует во всех Spaces.
-    //
-    // Stationary:
-    // окно не двигается вместе с другими окнами.
-    //
-    // IgnoresCycle:
-    // окно не участвует в Cmd+Tab/Cycle Windows.
-    native_window.setCollectionBehavior(
-        NSWindowCollectionBehavior::CanJoinAllSpaces
-            | NSWindowCollectionBehavior::Stationary
-            | NSWindowCollectionBehavior::IgnoresCycle,
-    );
+native_window.setCollectionBehavior(
+    NSWindowCollectionBehavior::IgnoresCycle,
+);
 
     let desktop_icon_level =
         CGWindowLevelForKey(
@@ -152,5 +166,27 @@ pub fn minimize_other_windows() -> std::io::Result<()> {
 
 #[cfg(not(target_os = "macos"))]
 pub fn minimize_other_windows() -> std::io::Result<()> {
+    Ok(())
+}
+
+#[cfg(target_os = "macos")]
+pub fn bring_to_front<R: Runtime>(
+    window: &WebviewWindow<R>,
+) -> tauri::Result<()> {
+    use objc2_app_kit::NSWindow;
+
+    let raw_window = window.ns_window()?;
+    let native_window =
+        unsafe { &*raw_window.cast::<NSWindow>() };
+
+    native_window.makeKeyAndOrderFront(None);
+
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+pub fn bring_to_front<R: Runtime>(
+    _window: &WebviewWindow<R>,
+) -> tauri::Result<()> {
     Ok(())
 }

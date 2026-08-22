@@ -185,6 +185,14 @@ fn set_overlay_mode(
 }
 
 #[tauri::command]
+fn bring_floatspace_to_front(
+    window: tauri::WebviewWindow,
+) -> Result<(), String> {
+    native_desktop::bring_to_front(&window)
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
 fn quit_app() {
     std::process::exit(0);
 }
@@ -194,6 +202,12 @@ fn take_pending_spotlight_card(
     state: State<'_, spotlight::PendingCardState>,
 ) -> Option<String> {
     spotlight::take_pending_card(state)
+}
+
+#[tauri::command]
+fn activate_floatspace() -> Result<(), String> {
+    native_desktop::activate_app()
+        .map_err(|error| error.to_string())
 }
 
 pub fn run() {
@@ -672,6 +686,8 @@ pub fn run() {
                 load_onboarding,
                 save_onboarding,
                 take_pending_spotlight_card,
+                activate_floatspace,
+                bring_floatspace_to_front,
                 quit_app
             ]
         )
