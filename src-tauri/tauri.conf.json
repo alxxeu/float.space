@@ -17,13 +17,15 @@
         "windows": [
             {
                 "title": "Floatspace",
-                "width": 1100,
-                "height": 720,
-                "resizable": false,
+                "width": 800,
+                "height": 600,
+                "resizable": true,
                 "decorations": false,
                 "transparent": true,
                 "shadow": false,
-                "visible": false
+                "visible": false,
+                "maximized": false,
+                "fullscreen": false
             }
         ],
         

@@ -20,8 +20,17 @@ pub fn configure<R: Runtime>(
     window: &WebviewWindow<R>,
 ) -> tauri::Result<()> {
     if let Some(monitor) = window.current_monitor()? {
-        window.set_position(*monitor.position())?;
-        window.set_size(*monitor.size())?;
+        let monitor_position = monitor.position();
+        let monitor_size = monitor.size();
+        let scale_factor = monitor.scale_factor();
+
+        // Переводим физические пиксели монитора в логические пиксели для macOS
+        let logical_pos = monitor_position.to_logical::<f64>(scale_factor);
+        let logical_size = monitor_size.to_logical::<f64>(scale_factor);
+
+        // Устанавливаем позицию и размер строго по границам текущего экрана
+        window.set_position(tauri::Position::Logical(logical_pos))?;
+        window.set_size(tauri::Size::Logical(logical_size))?;
     }
 
     apply_mode(window, Mode::Desktop)
@@ -74,7 +83,7 @@ pub fn apply_mode<R: Runtime>(
 fn ensure_blur_view(
     content_view: &objc2_app_kit::NSView,
 ) -> objc2::rc::Retained<objc2_app_kit::NSVisualEffectView> {
-    use objc2::MainThreadMarker; // <-- ИСПРАВЛЕНО: импортируем напрямую из корня objc2
+    use objc2::MainThreadMarker;
     use objc2::MainThreadOnly;
     use objc2::Message;
     use objc2_app_kit::{
@@ -93,41 +102,34 @@ fn ensure_blur_view(
         }
     }
 
-    // Получаем маркер главного потока
     let mtm = MainThreadMarker::new()
         .expect("ensure_blur_view must be called on the main thread");
 
     let bounds = content_view.bounds();
 
-    let blur_view = unsafe {
-        NSVisualEffectView::initWithFrame(
-            NSVisualEffectView::alloc(mtm), // Передаем маркер главного потока
-            bounds,
-        )
-    };
+    // ВСЕ блоки unsafe полностью удалены, так как objc2 теперь считает эти вызовы безопасными
+    let blur_view = NSVisualEffectView::initWithFrame(
+        NSVisualEffectView::alloc(mtm),
+        bounds,
+    );
 
-    unsafe {
-        blur_view.setMaterial(NSVisualEffectMaterial::HUDWindow);
-        blur_view.setBlendingMode(NSVisualEffectBlendingMode::BehindWindow);
-        blur_view.setState(NSVisualEffectState::Active);
-        
-        // Устанавливаем маску изменения размеров, удалив несуществующий setZerosAutoresizingMask
-        blur_view.setAutoresizingMask(
-            NSAutoresizingMaskOptions::ViewWidthSizable
-                | NSAutoresizingMaskOptions::ViewHeightSizable,
-        );
-    }
+    blur_view.setMaterial(NSVisualEffectMaterial::HUDWindow);
+    blur_view.setBlendingMode(NSVisualEffectBlendingMode::BehindWindow);
+    blur_view.setState(NSVisualEffectState::Active);
+    blur_view.setAutoresizingMask(
+        NSAutoresizingMaskOptions::ViewWidthSizable
+            | NSAutoresizingMaskOptions::ViewHeightSizable,
+    );
 
-    unsafe {
-        content_view.addSubview_positioned_relativeTo(
-            &blur_view,
-            NSWindowOrderingMode::Below,
-            None,
-        );
-    }
+    content_view.addSubview_positioned_relativeTo(
+        &blur_view,
+        NSWindowOrderingMode::Below,
+        None,
+    );
 
     blur_view
 }
+
 
 #[cfg(target_os = "macos")]
 fn apply_macos_mode<R: Runtime>(

@@ -2,10 +2,7 @@ mod native_desktop;
 mod spotlight;
 mod storage;
 
-use std::{
-    sync::Mutex,
-};
-
+use std::sync::Mutex;
 use storage::{Card, Database, NewCard, Workspace};
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
@@ -150,46 +147,27 @@ fn set_overlay_mode(
     state: State<'_, DesktopLayerState>,
     window: tauri::WebviewWindow,
 ) -> Result<(), String> {
-    let mode =
-        if enabled {
-            native_desktop::Mode::Workspace
-        } else if restore_to_workspace {
-            native_desktop::Mode::Workspace
-        } else {
-            native_desktop::Mode::Desktop
-        };
+    let mode = if enabled {
+        native_desktop::Mode::Workspace
+    } else if restore_to_workspace {
+        native_desktop::Mode::Workspace
+    } else {
+        native_desktop::Mode::Desktop
+    };
 
     *state
         .mode
         .lock()
         .map_err(|_| "Failed to lock desktop layer state".to_string())? = mode;
 
-    native_desktop::apply_mode(&window, mode)
-        .map_err(|error| error.to_string())?;
-
-//   #[cfg(target_os = "macos")]
-//   {
-//       match mode {
-//           native_desktop::Mode::Workspace => {
-//                native_desktop::set_desktop_icons_visible(false)
-//                    .map_err(|error| error.to_string())?;
-// }
-//            native_desktop::Mode::Desktop => {
-//                native_desktop::set_desktop_icons_visible(true)
-//                    .map_err(|error| error.to_string())?;
-//            }
-//        }
-//    }
+    native_desktop::apply_mode(&window, mode).map_err(|error| error.to_string())?;
 
     Ok(())
 }
 
 #[tauri::command]
-fn bring_floatspace_to_front(
-    window: tauri::WebviewWindow,
-) -> Result<(), String> {
-    native_desktop::bring_to_front(&window)
-        .map_err(|error| error.to_string())
+fn bring_floatspace_to_front(window: tauri::WebviewWindow) -> Result<(), String> {
+    native_desktop::bring_to_front(&window).map_err(|error| error.to_string())
 }
 
 #[tauri::command]
@@ -198,16 +176,13 @@ fn quit_app() {
 }
 
 #[tauri::command]
-fn take_pending_spotlight_card(
-    state: State<'_, spotlight::PendingCardState>,
-) -> Option<String> {
+fn take_pending_spotlight_card(state: State<'_, spotlight::PendingCardState>) -> Option<String> {
     spotlight::take_pending_card(state)
 }
 
 #[tauri::command]
 fn activate_floatspace() -> Result<(), String> {
-    native_desktop::activate_app()
-        .map_err(|error| error.to_string())
+    native_desktop::activate_app().map_err(|error| error.to_string())
 }
 
 pub fn run() {
@@ -238,7 +213,6 @@ pub fn run() {
                     return;
                 };
 
-                // ⌥1 = обычный macOS Desktop
                 if shortcut == Shortcut::new(Some(Modifiers::ALT), Code::Digit1) {
                     let state = app_handle.state::<DesktopLayerState>();
 
@@ -252,39 +226,27 @@ pub fn run() {
                             }
                         }
                         Err(_) => {
-                            eprintln!(
-                                "Floatspace desktop layer state is unavailable"
-                            );
+                            eprintln!("Floatspace desktop layer state is unavailable");
                             return;
                         }
                     };
 
                     if needs_desktop_mode {
                         if let Err(error) =
-                            native_desktop::apply_mode(
-                                &window,
-                                native_desktop::Mode::Desktop,
-                            )
+                            native_desktop::apply_mode(&window, native_desktop::Mode::Desktop)
                         {
-                            eprintln!(
-                                "Floatspace could not enter Desktop mode: {error}"
-                            );
+                            eprintln!("Floatspace could not enter Desktop mode: {error}");
                             return;
                         }
                     }
 
-                    if let Err(error) =
-                        app_handle.emit("switch-workspace", 1u8)
-                    {
-                        eprintln!(
-                            "Floatspace could not switch to Desktop: {error}"
-                        );
+                    if let Err(error) = app_handle.emit("switch-workspace", 1u8) {
+                        eprintln!("Floatspace could not switch to Desktop: {error}");
                     }
 
                     return;
                 }
 
-                // ⌥2–⌥9 = Floatspace spaces
                 let slot = match shortcut {
                     s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit2) => 2,
                     s if s == Shortcut::new(Some(Modifiers::ALT), Code::Digit3) => 3,
@@ -309,293 +271,139 @@ pub fn run() {
                         }
                     }
                     Err(_) => {
-                        eprintln!(
-                            "Floatspace desktop layer state is unavailable"
-                        );
+                        eprintln!("Floatspace desktop layer state is unavailable");
                         return;
                     }
                 };
 
                 if needs_workspace_mode {
                     if let Err(error) =
-                        native_desktop::apply_mode(
-                            &window,
-                            native_desktop::Mode::Workspace,
-                        )
+                        native_desktop::apply_mode(&window, native_desktop::Mode::Workspace)
                     {
-                        eprintln!(
-                            "Floatspace could not enter Workspace mode: {error}"
-                        );
+                        eprintln!("Floatspace could not enter Workspace mode: {error}");
                         return;
                     }
                 }
 
-                if let Err(error) =
-                    app_handle.emit("switch-workspace", slot)
-                {
-                    eprintln!(
-                        "Floatspace could not switch workspace: {error}"
-                    );
+                if let Err(error) = app_handle.emit("switch-workspace", slot) {
+                    eprintln!("Floatspace could not switch workspace: {error}");
                 }
             });
         })
         .build();
 
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_autostart::Builder::new().build()
-        )
+        .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
-        .plugin(
-            tauri_plugin_single_instance::init(
-                |app, argv, cwd| {
-                    println!("SINGLE INSTANCE:");
-                    println!("argv: {:?}", argv);
-                    println!("cwd: {:?}", cwd);
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            println!("SINGLE INSTANCE:\nargv: {:?}\ncwd: {:?}", argv, cwd);
 
-                    for arg in argv {
-                        let Some(card_id) =
-                            arg.strip_prefix("floatspace://card/")
-                        else {
-                            continue;
-                        };
+            for arg in argv {
+                let Some(card_id) = arg.strip_prefix("floatspace://card/") else {
+                    continue;
+                };
 
-                        println!(
-                            "SINGLE INSTANCE → CARD: {}",
-                            card_id
-                        );
+                println!("SINGLE INSTANCE → CARD: {}", card_id);
 
-                        {
-                            let state =
-                                app.state::<spotlight::PendingCardState>();
+{
+    let state = app.state::<spotlight::PendingCardState>();
+    let mut pending = state.card_id.lock().unwrap();
+    *pending = Some(card_id.to_string());
+    println!("SINGLE INSTANCE → PENDING CARD SAVED: {}", card_id);
+}
 
-                            let lock_result = state.card_id.lock();
-                            match lock_result {
-                                Ok(mut pending) => {
-                                    *pending =
-                                        Some(card_id.to_string());
 
-                                    println!(
-                                        "SINGLE INSTANCE → PENDING CARD SAVED: {}",
-                                        card_id
-                                    );
-                                }
-                                Err(_) => {
-                                    eprintln!(
-                                        "SINGLE INSTANCE → FAILED TO LOCK PENDING STATE"
-                                    );
-                                }
-                            }
-                        }
-
-                        match app.emit(
-                            "open-card-from-spotlight",
-                            card_id.to_string(),
-                        ) {
-                            Ok(_) => {
-                                println!(
-                                    "SINGLE INSTANCE → EVENT EMITTED: {}",
-                                    card_id
-                                );
-                            }
-                            Err(error) => {
-                                eprintln!(
-                                    "SINGLE INSTANCE → EVENT ERROR: {}",
-                                    error
-                                );
-                            }
-                        }
-                    }
-                },
-            )
-        )
+                if let Err(error) = app.emit("open-card-from-spotlight", card_id.to_string()) {
+                    eprintln!("SINGLE INSTANCE → EVENT ERROR: {}", error);
+                } else {
+                    println!("SINGLE INSTANCE → EVENT EMITTED: {}", card_id);
+                }
+            }
+        }))
         .plugin(shortcut_plugin)
         .setup(|app| {
             use tauri_plugin_deep_link::DeepLinkExt;
 
-            // Этот state должен существовать до обработки deep link.
             app.manage(spotlight::PendingCardState {
                 card_id: Mutex::new(None),
             });
 
-            /*
-             * COLD START
-             *
-             * Если Floatspace ещё не запущен и macOS запускает его
-             * через floatspace://card/<id>, deep-link лежит здесь.
-             */
+            // === АДАПТАЦИЯ ЭКРАНА И МАСШТАБА ===
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = native_desktop::configure(&window);
+
+                let w_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::ScaleFactorChanged { .. } = event {
+                        let _ = native_desktop::configure(&w_clone);
+                    }
+                });
+            }
+
+            // === COLD START DEEP LINK ===
             if let Some(urls) = app.deep_link().get_current()? {
-                println!(
-                    "DEEP LINK START URLS: {:?}",
-                    urls
-                );
+                println!("DEEP LINK START URLS: {:?}", urls);
 
                 for url in urls {
-                    println!(
-                        "DEEP LINK START URL: {}",
-                        url
-                    );
-
-                    if url.scheme() != "floatspace" {
+                    if url.scheme() != "floatspace" || url.host_str() != Some("card") {
                         continue;
                     }
 
-                    if url.host_str() != Some("card") {
-                        continue;
-                    }
-
-                    let Some(card_id) = url
-                        .path_segments()
-                        .and_then(|mut segments| segments.next())
-                    else {
+                    let Some(card_id) = url.path_segments().and_then(|mut s| s.next()) else {
                         continue;
                     };
 
-                    println!(
-                        "FLOATSPACE START CARD: {}",
-                        card_id
-                    );
+                    println!("FLOATSPACE START CARD: {}", card_id);
 
-                    {
-                        let state =
-                            app.state::<spotlight::PendingCardState>();
-
-                        let lock_result = state.card_id.lock();
-                        match lock_result {
-                            Ok(mut pending) => {
-                                *pending =
-                                    Some(card_id.to_string());
-
-                                println!(
-                                    "SPOTLIGHT → PENDING CARD SAVED: {}",
-                                    card_id
-                                );
-                            }
-                            Err(_) => {
-                                eprintln!(
-                                    "SPOTLIGHT → FAILED TO LOCK PENDING STATE"
-                                );
-                            }
-                        }
-                    }
+                    let state = app.state::<spotlight::PendingCardState>();
+              let mut pending = state.card_id.lock().unwrap();
+    *pending = Some(card_id.to_string());
+    println!("SPOTLIGHT → PENDING CARD SAVED: {}", card_id);
                 }
             }
 
-            /*
-             * WARM START
-             *
-             * Floatspace уже запущен, а macOS передаёт ему
-             * новый deep link.
-             */
+            // === WARM START DEEP LINK ===
             #[cfg(desktop)]
             {
                 let app_handle = app.handle().clone();
 
-                app.deep_link().on_open_url(
-                    move |event| {
-                        println!(
-                            "DEEP LINK EVENT RECEIVED"
-                        );
+                app.deep_link().on_open_url(move |event| {
+                    println!("DEEP LINK EVENT RECEIVED");
 
-                        for url in event.urls() {
-                            println!(
-                                "DEEP LINK URL: {}",
-                                url
-                            );
-
-                            if url.scheme() != "floatspace" {
-                                continue;
-                            }
-
-                            if url.host_str() != Some("card") {
-                                continue;
-                            }
-
-                            let Some(card_id) = url
-                                .path_segments()
-                                .and_then(|mut segments| {
-                                    segments.next()
-                                })
-                            else {
-                                continue;
-                            };
-
-                            println!(
-                                "FLOATSPACE OPEN CARD: {}",
-                                card_id
-                            );
-
-                            /*
-                             * Всегда сохраняем pending.
-                             *
-                             * Это важно: React listener может ещё
-                             * не существовать в момент emit.
-                             */
-                            {
-                                let state =
-                                    app_handle
-                                        .state::<spotlight::PendingCardState>();
-
-                                let lock_result = state.card_id.lock();
-                                match lock_result {
-                                    Ok(mut pending) => {
-                                        *pending =
-                                            Some(card_id.to_string());
-
-                                        println!(
-                                            "SPOTLIGHT → PENDING CARD SAVED: {}",
-                                            card_id
-                                        );
-                                    }
-                                    Err(_) => {
-                                        eprintln!(
-                                            "SPOTLIGHT → FAILED TO LOCK PENDING STATE"
-                                        );
-                                    }
-                                }
-                            }
-
-                            /*
-                             * Если React уже слушает событие —
-                             * карточка откроется сразу.
-                             *
-                             * Если нет — pending state заберёт
-                             * её позже.
-                             */
-                            match app_handle.emit(
-                                "open-card-from-spotlight",
-                                card_id.to_string(),
-                            ) {
-                                Ok(_) => {
-                                    println!(
-                                        "SPOTLIGHT → EVENT EMITTED: {}",
-                                        card_id
-                                    );
-                                }
-                                Err(error) => {
-                                    eprintln!(
-                                        "SPOTLIGHT → EMIT ERROR: {}",
-                                        error
-                                    );
-                                }
-                            }
+                    for url in event.urls() {
+                        if url.scheme() != "floatspace" || url.host_str() != Some("card") {
+                            continue;
                         }
-                    },
-                );
+
+                        let Some(card_id) = url.path_segments().and_then(|mut s| s.next()) else {
+                            continue;
+                        };
+
+                        println!("FLOATSPACE OPEN CARD: {}", card_id);
+
+                       {
+    let state = app_handle.state::<spotlight::PendingCardState>();
+    let mut pending = state.card_id.lock().unwrap();
+    *pending = Some(card_id.to_string());
+    println!("SPOTLIGHT → PENDING CARD SAVED: {}", card_id);
+}
+
+
+                        if let Err(error) = app_handle.emit("open-card-from-spotlight", card_id.to_string()) {
+                            eprintln!("SPOTLIGHT → EMIT ERROR: {}", error);
+                        } else {
+                            println!("SPOTLIGHT → EVENT EMITTED: {}", card_id);
+                        }
+                    }
+                });
             }
 
-            let data_dir =
-                app.path().app_data_dir()?;
+            // === ИНИЦИАЛИЗАЦИЯ СУБД SQLite И ИНДЕКСОВ ===
+            let data_dir = app.path().app_data_dir()?;
+            std::fs::create_dir_all(&data_dir)?;
 
-            std::fs::create_dir_all(
-                &data_dir
-            )?;
-
-            let database =
-                Database::open(
-                    data_dir.join("floatspace.sqlite")
-                )?;
+            let database = Database::open(data_dir.join("floatspace.sqlite"))?;
 
             #[cfg(target_os = "macos")]
             {
@@ -606,95 +414,57 @@ pub fn run() {
                 }
 
                 if let Err(error) = spotlight::clear() {
-                    eprintln!("SPOTLIGHT: failed to clear existing index: {error}");
-                }
 
-                match database.list_workspaces() {
-                    Ok(workspaces) => {
-                        for workspace in workspaces {
-                            match database.list_cards(
-                                workspace.id.clone()
-                            ) {
-                                Ok(cards) => {
-                                    for card in cards {
-                                        if let Err(error) =
-                                            spotlight::index_card(&card)
-                                        {
-                                            eprintln!(
-                                                "SPOTLIGHT: failed to index existing card {}: {}",
-                                                card.id,
-                                                error
-                                            );
-                                        }
-                                    }
-                                }
+                eprintln!("SPOTLIGHT: failed to clear existing index: {error}");
+            }
 
-                                Err(error) => {
-                                    eprintln!(
-                                        "SPOTLIGHT: failed to load cards for workspace {}: {}",
-                                        workspace.id,
-                                        error
-                                    );
-                                }
+            if let Ok(workspaces) = database.list_workspaces() {
+                for workspace in workspaces {
+                    if let Ok(cards) = database.list_cards(workspace.id.clone()) {
+                        for card in cards {
+                            if let Err(error) = spotlight::index_card(&card) {
+                                eprintln!("SPOTLIGHT: failed to index card {}: {}", card.id, error);
                             }
                         }
                     }
-
-                    Err(error) => {
-                        eprintln!(
-                            "SPOTLIGHT: failed to load workspaces: {error}"
-                        );
-                    }
                 }
             }
+        }
 
-            app.manage(AppState {
-                database: Mutex::new(database),
-            });
+        app.manage(AppState {
+            database: Mutex::new(database),
+        });
 
-            app.manage(DesktopLayerState {
-                mode: Mutex::new(
-                    native_desktop::Mode::Desktop
-                ),
-            });
+        app.manage(DesktopLayerState {
+            mode: Mutex::new(native_desktop::Mode::Desktop),
+        });
 
-            let window = app
-                .get_webview_window("main")
-                .ok_or(
-                    "The main Floatspace window is unavailable"
-                )?;
+        let window = app
+            .get_webview_window("main")
+            .ok_or("The main Floatspace window is unavailable")?;
 
-            native_desktop::configure(
-                &window
-            )?;
+        native_desktop::configure(&window)?;
+        window.show()?;
 
-            window.show()?;
-
-            Ok(())
-        })
-        .invoke_handler(
-            tauri::generate_handler![
-                list_workspaces,
-                create_workspace,
-                update_workspace,
-                set_overlay_mode,
-                minimize_other_windows,
-                list_cards,
-                create_card,
-                update_card,
-                delete_card,
-                load_onboarding,
-                save_onboarding,
-                take_pending_spotlight_card,
-                activate_floatspace,
-                bring_floatspace_to_front,
-                quit_app
-            ]
-        )
-        .run(
-            tauri::generate_context!()
-        )
-        .expect(
-            "error while running Floatspace"
-        );
+        Ok(())
+    })
+    .invoke_handler(tauri::generate_handler![
+        list_workspaces,
+        create_workspace,
+        update_workspace,
+        set_overlay_mode,
+        minimize_other_windows,
+        list_cards,
+        create_card,
+        update_card,
+        delete_card,
+        load_onboarding,
+        save_onboarding,
+        take_pending_spotlight_card,
+        activate_floatspace,
+        bring_floatspace_to_front,
+        quit_app
+    ])
+    .run(tauri::generate_context!())
+    .expect("error while running Floatspace");
 }
