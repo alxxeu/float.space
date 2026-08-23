@@ -24,3 +24,50 @@ export async function updateCard(card: Card): Promise<void> {
 export async function deleteCard(id: string): Promise<void> {
   return invoke("delete_card", { id });
 }
+
+export async function updateWorkspace(
+  id: string,
+  name: string
+): Promise<void> {
+  return invoke("update_workspace", { id, name });
+}
+
+export async function loadOnboarding(): Promise<{
+  completed: boolean;
+  step: number;
+}> {
+  return invoke("load_onboarding");
+}
+
+export async function saveOnboarding(
+  completed: boolean,
+  step: number
+): Promise<void> {
+  return invoke("save_onboarding", {
+    completed,
+    step,
+  });
+}
+
+export async function setOverlayMode(
+  enabled: boolean,
+  restoreToWorkspace = false
+): Promise<void> {
+  return invoke("set_overlay_mode", {
+    enabled,
+    restoreToWorkspace,
+  });
+}
+
+export async function minimizeOtherWindows(): Promise<void> {
+  return invoke("minimize_other_windows");
+}
+
+export async function activateFloatspace(): Promise<void> {
+  return invoke("activate_floatspace");
+}
+
+export async function bringFloatspaceToFront(): Promise<void> {
+  return invoke("bring_floatspace_to_front");
+}
+

@@ -6,21 +6,24 @@ use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct Workspace {
-    id: String,
-    name: String,
-    slot: i64,
+    pub(crate) id: String,
+    pub(crate) name: String,
+    pub(crate) slot: i64,
 }
 
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Card {
-    id: String,
-    workspace_id: String,
-    text: String,
-    x: f64,
-    y: f64,
-    width: f64,
-    height: f64,
+    pub(crate) id: String,
+    pub(crate) workspace_id: String,
+    pub(crate) text: String,
+    pub(crate) x: f64,
+    pub(crate) y: f64,
+    pub(crate) width: f64,
+    pub(crate) height: f64,
+    pub(crate) tag_color: Option<String>,
+    pub(crate) is_spoiler: Option<bool>,
+    pub(crate) is_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -41,6 +44,8 @@ pub struct Database {
 impl Database {
     pub fn open(path: PathBuf) -> rusqlite::Result<Self> {
         let connection = Connection::open(path)?;
+        
+        // 1. Создаем базовые таблицы в рамках одной валидной SQL строки
         connection.execute_batch(
             "
             PRAGMA foreign_keys = ON;
@@ -63,8 +68,33 @@ impl Database {
               updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             CREATE INDEX IF NOT EXISTS cards_workspace_id_idx ON cards(workspace_id);
-            ",
+            
+            CREATE TABLE IF NOT EXISTS onboarding (
+              id INTEGER PRIMARY KEY CHECK (id = 1),
+              completed INTEGER NOT NULL DEFAULT 0,
+              step INTEGER NOT NULL DEFAULT 0
+            );
+
+            INSERT OR IGNORE INTO onboarding (id, completed, step)
+            VALUES (1, 0, 0);
+            "
         )?;
+
+        // 2. Безопасно добавляем колонки для старых баз данных
+        let _ = connection.execute(
+            "ALTER TABLE cards ADD COLUMN tag_color TEXT",
+            []
+        );
+        
+        let _ = connection.execute(
+            "ALTER TABLE cards ADD COLUMN is_spoiler INTEGER DEFAULT 0",
+            []
+        );
+        
+        let _ = connection.execute(
+            "ALTER TABLE cards ADD COLUMN is_locked INTEGER DEFAULT 0",
+            []
+        );
 
         let database = Self { connection };
         database.ensure_default_workspace()?;
@@ -72,10 +102,10 @@ impl Database {
     }
 
     pub fn list_workspaces(&self) -> rusqlite::Result<Vec<Workspace>> {
-        let mut statement = self.connection.prepare(
-            "SELECT id, name, slot FROM workspaces ORDER BY slot ASC",
-        )?;
-        statement
+        let mut statement = self
+            .connection
+            .prepare("SELECT id, name, slot FROM workspaces ORDER BY slot ASC")?;
+        let workspaces = statement
             .query_map([], |row| {
                 Ok(Workspace {
                     id: row.get(0)?,
@@ -83,48 +113,160 @@ impl Database {
                     slot: row.get(2)?,
                 })
             })?
-            .collect()
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(workspaces)
     }
 
     pub fn create_workspace(&self, name: String) -> rusqlite::Result<Workspace> {
-        let slot = self.connection.query_row("SELECT COALESCE(MAX(slot), 0) + 1 FROM workspaces", [], |row| row.get::<_, i64>(0))?;
-        if slot > 10 { return Err(rusqlite::Error::ExecuteReturnedResults); }
-        let workspace = Workspace { id: Uuid::new_v4().to_string(), name, slot };
-        self.connection.execute("INSERT INTO workspaces (id, name, slot) VALUES (?1, ?2, ?3)", params![workspace.id, workspace.name, workspace.slot])?;
+        let slot = self.connection.query_row(
+            "SELECT COALESCE(MAX(slot), 0) + 1 FROM workspaces",
+            [],
+            |row| row.get::<_, i64>(0),
+        )?;
+        if slot > 10 {
+            return Err(rusqlite::Error::ExecuteReturnedResults);
+        }
+        let workspace = Workspace {
+            id: Uuid::new_v4().to_string(),
+            name,
+            slot,
+        };
+        self.connection.execute(
+            "INSERT INTO workspaces (id, name, slot) VALUES (?1, ?2, ?3)",
+            params![workspace.id, workspace.name, workspace.slot],
+        )?;
         Ok(workspace)
     }
 
+    pub fn update_workspace(&self, id: String, name: String) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "UPDATE workspaces
+         SET name = ?1, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?2",
+            params![name, id],
+        )?;
+
+        Ok(())
+    }
+
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
-        let mut statement = self.connection.prepare("SELECT id, workspace_id, text, x, y, width, height FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC")?;
-        statement.query_map([workspace_id], Self::card_from_row)?.collect()
+        let mut statement = self.connection.prepare(
+            "SELECT id, workspace_id, text, x, y, width, height, tag_color, is_spoiler, is_locked FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC"
+        )?;
+        let cards = statement
+            .query_map([workspace_id], Self::card_from_row)?
+            .collect::<rusqlite::Result<Vec<_>>>()?;
+
+        Ok(cards)
     }
 
     pub fn create_card(&self, new_card: NewCard) -> rusqlite::Result<Card> {
-        let card = Card { id: Uuid::new_v4().to_string(), workspace_id: new_card.workspace_id, text: new_card.text, x: new_card.x, y: new_card.y, width: new_card.width, height: new_card.height };
-        self.connection.execute("INSERT INTO cards (id, workspace_id, text, x, y, width, height) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)", params![card.id, card.workspace_id, card.text, card.x, card.y, card.width, card.height])?;
+        let card = Card {
+            id: Uuid::new_v4().to_string(),
+            workspace_id: new_card.workspace_id,
+            text: new_card.text,
+            x: new_card.x,
+            y: new_card.y,
+            width: new_card.width,
+            height: new_card.height,
+            tag_color: None,
+            is_spoiler: Some(false),
+            is_locked: Some(false),
+        };
+        self.connection.execute(
+        "INSERT INTO cards (id, workspace_id, text, x, y, width, height, tag_color, is_spoiler, is_locked)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            params![
+                card.id,
+                card.workspace_id,
+                card.text,
+                card.x,
+                card.y,
+                card.width,
+                card.height,
+                card.tag_color,
+                card.is_spoiler.unwrap_or(false) as i64,
+                0_i64, // ?10
+            ]
+        )?;
         Ok(card)
     }
 
     pub fn update_card(&self, card: Card) -> rusqlite::Result<()> {
-        self.connection.execute("UPDATE cards SET text = ?1, x = ?2, y = ?3, width = ?4, height = ?5, updated_at = CURRENT_TIMESTAMP WHERE id = ?6", params![card.text, card.x, card.y, card.width, card.height, card.id])?;
+        self.connection.execute(
+            "UPDATE cards
+                SET workspace_id = ?1, text = ?2, x = ?3, y = ?4, width = ?5, height = ?6, tag_color = ?7, is_spoiler = ?8, is_locked = ?9, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?10",
+            params![
+                card.workspace_id, // ?1
+                card.text,         // ?2
+                card.x,            // ?3
+                card.y,            // ?4
+                card.width,        // ?5
+                card.height,       // ?6
+                card.tag_color,    // ?7
+                card.is_spoiler.unwrap_or(false) as i64, // ?8
+                card.is_locked.unwrap_or(false) as i64, // ?9
+                card.id,                                // ?10
+            ]
+        )?;
         Ok(())
     }
 
     pub fn delete_card(&self, id: String) -> rusqlite::Result<()> {
-        self.connection.execute("DELETE FROM cards WHERE id = ?1", [id])?;
+        self.connection
+            .execute("DELETE FROM cards WHERE id = ?1", [id])?;
+        Ok(())
+    }
+
+    pub fn load_onboarding(&self) -> rusqlite::Result<(bool, i64)> {
+        self.connection.query_row(
+            "SELECT completed, step FROM onboarding WHERE id = 1",
+            [],
+            |row| {
+                let completed: i64 = row.get(0)?;
+                let step: i64 = row.get(1)?;
+                Ok((completed != 0, step))
+            },
+        )
+    }
+
+    pub fn save_onboarding(&self, completed: bool, step: i64) -> rusqlite::Result<()> {
+        self.connection.execute(
+            "UPDATE onboarding
+         SET completed = ?1, step = ?2
+         WHERE id = 1",
+            params![completed as i64, step],
+        )?;
+
         Ok(())
     }
 
     fn card_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Card> {
-        Ok(Card { id: row.get(0)?, workspace_id: row.get(1)?, text: row.get(2)?, x: row.get(3)?, y: row.get(4)?, width: row.get(5)?, height: row.get(6)? })
+        let is_spoiler_num: Option<i64> = row.get(8).ok();
+        let is_locked_num: Option<i64> = row.get(9).ok();
+        
+        Ok(Card {
+            id: row.get(0)?,
+            workspace_id: row.get(1)?,
+            text: row.get(2)?,
+            x: row.get(3)?,
+            y: row.get(4)?,
+            width: row.get(5)?,
+            height: row.get(6)?,
+            tag_color: row.get(7).ok(),
+            is_spoiler: Some(is_spoiler_num.unwrap_or(0) != 0),
+            is_locked: Some(is_locked_num.unwrap_or(0) != 0),
+        })
     }
 
     fn ensure_default_workspace(&self) -> rusqlite::Result<()> {
-        let exists: bool = self.connection.query_row(
-            "SELECT EXISTS(SELECT 1 FROM workspaces)",
-            [],
-            |row| row.get(0),
-        )?;
+        let exists: bool =
+            self.connection
+                .query_row("SELECT EXISTS(SELECT 1 FROM workspaces)", [], |row| {
+                    row.get(0)
+                })?;
 
         if !exists {
             self.connection.execute(

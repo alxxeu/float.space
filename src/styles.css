@@ -1,46 +1,1052 @@
 :root {
-  color: #f2f2f2;
-  background: #161616;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  color: #000000;
+  background: rgb(38 38 38 / 0%);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
 }
 
-* { box-sizing: border-box; }
-
-body { margin: 0; min-width: 320px; min-height: 100vh; }
-
-button, input, textarea { font: inherit; }
-
-.app-shell { min-height: 100vh; overflow: hidden;
-  background: radial-gradient(circle at 50% 35%, #292929 0%, #191919 52%, #111 100%);
+* {
+  box-sizing: border-box;
 }
 
-.topbar { position: fixed; z-index: 5; top: 0; left: 0; padding: 28px 32px 48px; }
-.wordmark {
+html, body, #root {
+  width: 100%;
+  height: 100%;
+  min-width: 320px;
+  min-height: 100%;
   margin: 0;
-  color: rgb(255 255 255 / 48%);
-  font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.04em;
+  overflow: hidden;
+  background: transparent;
 }
 
-.workspace-menu { width: 208px; margin-top: 10px; padding: 6px; border: 1px solid rgb(255 255 255 / 10%); border-radius: 10px; background: rgb(38 38 38 / 92%); box-shadow: 0 12px 36px rgb(0 0 0 / 25%); backdrop-filter: blur(18px); }
-.workspace-menu button { display: flex; gap: 10px; align-items: center; width: 100%; padding: 8px; border: 0; border-radius: 6px; color: rgb(255 255 255 / 65%); background: transparent; text-align: left; cursor: pointer; }
-.workspace-menu button:hover, .workspace-menu button.active { color: #fff; background: rgb(255 255 255 / 9%); }
-.workspace-menu span { width: 16px; color: rgb(255 255 255 / 34%); font-size: 11px; }
-.workspace-menu .new-space { margin-top: 4px; border-top: 1px solid rgb(255 255 255 / 8%); border-radius: 0; color: rgb(255 255 255 / 48%); }
-.canvas { position: relative; min-height: 100vh; touch-action: none; }
-.canvas-hint { position: absolute; inset: 0; display: grid; place-items: center; margin: 0; color: rgb(255 255 255 / 24%); font-size: 14px; pointer-events: none; }
-.card { position: absolute; display: flex; min-width: 120px; min-height: 120px; border: 1px solid rgb(255 255 255 / 13%); border-radius: 12px; background: rgb(48 48 48 / 82%); box-shadow: 0 12px 30px rgb(0 0 0 / 14%); overflow: hidden; }
-.card-draft { opacity: 0.45; pointer-events: none; }
-.card textarea { width: 100%; height: 100%; resize: none; padding: 24px 18px 18px; border: 0; outline: 0; color: rgb(255 255 255 / 90%); background: transparent; line-height: 1.45; }
-.card-handle { position: absolute; top: 0; left: 0; right: 28px; height: 17px; cursor: grab; opacity: 0; }
-.card:hover .card-handle, .card:focus-within .card-handle { opacity: 1; }
-.card-handle:active { cursor: grabbing; }
-.delete-card { position: absolute; top: 5px; right: 6px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 5px; color: rgb(255 255 255 / 48%); background: transparent; cursor: pointer; opacity: 0; }
-.card:hover .delete-card, .card:focus-within .delete-card { opacity: 1; }
-.delete-card:hover { color: #fff; background: rgb(255 255 255 / 10%); }
-.resize-handle { position: absolute; right: 0; bottom: 0; width: 18px; height: 18px; cursor: nwse-resize; opacity: 0; }
-.resize-handle::after { position: absolute; right: 5px; bottom: 5px; width: 5px; height: 5px; border-right: 1px solid rgb(255 255 255 / 42%); border-bottom: 1px solid rgb(255 255 255 / 42%); content: ""; }
-.card:hover .resize-handle, .card:focus-within .resize-handle { opacity: 1; }
+button, input, textarea {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  overflow: hidden;
+  background: transparent;
+}
+
+.canvas {
+  position: relative;
+  min-height: 100vh;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  background: transparent !important;
+  z-index: 2;
+}
+
+/* ==========================================================================
+   КОМПОНЕНТ КАРТОЧКИ (LIQUID GLASS + ИСПРАВЛЕННАЯ ПЛАВНОСТЬ ХОВЕРА)
+   ========================================================================== */
+.card {
+  position: absolute;
+  user-select: text;
+  -webkit-user-select: text;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  min-height: 120px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.30);
+  box-shadow:
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+  transition:
+    background 400ms ease,
+    border-color 400ms ease,
+    box-shadow 400ms ease;
+}
+
+.card:hover {
+  background: rgba(0, 0, 0, 0.40);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.25),
+  inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.5),
+  inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.card.card-focused {
+  background: rgba(0, 0, 0, 0.45);
+  border-color: rgba(255, 255, 255, 0.15); /* Исправлена опечатка в альфа-канале */
+  box-shadow:
+    0 16px 40px 0 rgba(0, 0, 0, 0.35),
+    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.card-draft {
+  pointer-events: none;
+  background: rgb(255 255 255 / 5%);
+  filter: blur(2px);
+  box-shadow: 0 8px 32px rgb(0 0 0 / 8%);
+}
+
+/* ==========================================================================
+   ВНУТРЕННИЙ ТЕКСТ И ССЫЛКИ
+   ========================================================================== */
+.card-textarea {
+  width: 100%;
+  height: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  overflow-x: hidden;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  outline: none;
+  border: none;
+  background: transparent;
+  resize: none;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+  color: rgb(255 255 255 / 88%);
+  font-size: 15px;
+  line-height: 1.5;
+  caret-color: rgb(255 255 255 / 80%);
+  border-radius: 16px;
+  position: relative;
+  z-index: 2;
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+}
+
+.card-textarea::-webkit-scrollbar {
+  width: 0px;
+  background: transparent;
+}
+
+.card-textarea p,
+.card-textarea div {
+  margin: 0;
+  padding: 0;
+}
+
+.card-textarea a {
+  color: #007aff;
+  text-decoration: underline;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.card-textarea a:hover {
+  opacity: 0.75;
+}
+
+.card-textarea hr.card-divider {
+  border: none;
+  border-top: 1px solid rgba(128, 128, 128, 0.3);
+  margin: 12px 0;
+  display: block;
+  user-select: none;
+}
+
+/* ==========================================================================
+   ИСПРАВЛЕНИЕ ИКОНКИ РАСТЯЖЕНИЯ (HITBOX)
+   ========================================================================== */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
+  cursor: nwse-resize !important;
+  opacity: 0;
+  z-index: 10;
+  background: transparent;
+  transition: opacity 200ms ease;
+}
+
+.resize-handle::after {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 9px;
+  height: 10px;
+  border-right: 2px solid rgb(255 255 255 / 42%);
+  border-bottom: 2px solid rgb(255 255 255 / 42%);
+  border-radius: 0 0 10px 0;
+  content: "";
+  pointer-events: none;
+}
+
+.card:hover .resize-handle,
+.card:focus-within .resize-handle {
+  opacity: 1;
+}
+
+/* ==========================================================================
+   СЕРВИСНЫЕ ЭЛЕМЕНТЫ (УДАЛЕНИЕ, ПЕРЕМЕЩЕНИЕ И ОВЕРЛЕИ)
+   ========================================================================== */
+.card-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 28px;
+  height: 25px;
+  cursor: grab;
+  opacity: 0;
+  z-index: 3;
+}
+
+.card-handle:active {
+  cursor: grabbing;
+}
+
+.delete-card {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  color: rgb(255 255 255 / 48%);
+  background: transparent;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 200ms ease, background 150ms ease, color 150ms ease;
+}
+
+.card:hover .delete-card,
+.card:focus-within .delete-card {
+  opacity: 1;
+}
+
+.delete-card:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 10%);
+}
+
+.delete-progress {
+  fill: none;
+  display: block;
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  transform: rotate(-90deg);
+  overflow: visible;
+}
+
+.delete-progress-fill {
+  fill: none;
+  stroke-width: 1.5;
+  stroke: rgba(255, 255, 255, 0.3);
+  stroke-linecap: round;
+  stroke-dasharray: 44;
+  stroke-dashoffset: 44;
+  transform-origin: center;
+  opacity: 0;
+}
+
+.delete-progress-fill.active {
+  opacity: 1;
+}
+
+.delete-card:active .delete-card-icon {
+  color: rgba(255, 255, 255, 0.9);
+  transform: scale(0.9);
+}
+
+.delete-card svg {
+  display: block;
+}
+
+/* ==========================================================================
+   СИСТЕМНЫЕ ИНТЕРФЕЙСЫ И СЛУЖЕБНЫЕ СТИЛИ
+   ========================================================================== */
+.empty-space-note {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: auto;
+  user-select: none;
+  color: #fff;
+}
+
+.no-text-selection * {
+  user-select: none !important;
+}
+
+.empty-space-title {
+  font-size: 22px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.empty-space-hint {
+  margin-top: 8px;
+  font-size: 14px;
+  opacity: 0.4;
+}
+
+.empty-space-slot {
+  display: inline-block;
+  margin-bottom: 12px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 1000;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0.4;
+}
+
+.floatspace-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.canvas-edge-hint {
+  position: absolute;
+  pointer-events: none;
+  z-index: 9999;
+  background: rgb(255 255 255 / 30%);
+  filter: blur(1px);
+  border-radius: 999px;
+}
+
+.card-placement-preview {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+  filter: blur(1px);
+  z-index: 9999;
+}
+
+.canvas.is-creating-card,
+.canvas.is-creating-card * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.card-handle {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+.card-spotlight-found {
+  animation: spotlight-found 2s ease-out;
+}
+
+@keyframes spotlight-found {
+  0% {
+    box-shadow:
+      0 0 0 2px rgb(255 255 255 / 35%),
+      0 0 30px rgb(255 255 255 / 15%);
+  }
+  100% {
+    box-shadow: none;
+  }
+}
+
+/* ==========================================================================
+   ONBOARDING & WORKSPACE LABEL
+   ========================================================================== */
+.onboarding-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.onboarding-layer .onboarding-card {
+  pointer-events: auto;
+}
+
+.onboarding-card {
+  width: min(360px, calc(100vw - 48px));
+  padding: 24px 26px;
+  border: 1px solid rgb(255 255 255 / 11%);
+  border-radius: 20px;
+  background: rgb(38 38 38);
+  box-shadow:
+    0 20px 60px rgb(0 0 0 / 24%),
+    inset 0 1px 0 rgb(255 255 255 / 4%);
+  color: rgb(255 255 255 / 90%);
+}
+
+.onboarding-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.onboarding-eyebrow {
+  margin-bottom: 9px;
+  color: rgb(255 255 255 / 38%);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+}
+
+.onboarding-title {
+  max-width: 300px;
+  font-size: 21px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-text {
+  margin-top: 10px;
+  color: rgb(255 255 255 / 54%);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.onboarding-spaces {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 7px 9px;
+  margin-top: 18px;
+  color: rgb(255 255 255 / 42%);
+  font-size: 11px;
+}
+
+.onboarding-spaces span:nth-child(odd) {
+  color: rgb(255 255 255 / 72%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.onboarding-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 20px;
+  padding: 9px 11px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 7%);
+  color: rgb(255 255 255 / 88%);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.onboarding-action:hover {
+  background: rgb(255 255 255 / 11%);
+  border-color: rgb(255 255 255 / 16%);
+}
+
+.onboarding-action kbd {
+  color: rgb(255 255 255 / 38%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.onboarding-hint {
+  margin-top: 18px;
+  color: rgb(255 255 255 / 32%);
+  font-size: 11px;
+}
+
+.onboarding-progress {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.onboarding-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 18%);
+  transition: background 200ms ease, transform 200ms ease;
+}
+
+.onboarding-dot.active {
+  background: rgb(255 255 255 / 80%);
+  transform: scale(1.3);
+}
+
+.onboarding-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+}
+
+.onboarding-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  box-sizing: border-box;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(255, 255, 255, 0.85);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  box-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.workspace-label {
+  position: fixed;
+  top: 42px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 5px 10px;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 16px;
+  color: rgba(255, 255, 255, 0.72);
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  cursor: text;
+  pointer-events: auto;
+  user-select: none;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.workspace-label:hover {
+  background: rgba(30, 30, 30, 0.42);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(6px);
+}
+
+.workspace-label.editing {
+  background: rgba(30, 30, 30, 0.42);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.workspace-label-input {
+  width: 140px;
+  padding: 0;
+  margin: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
+  text-align: center;
+}
+
+.onboarding-finish-hint {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 50px;
+  margin-top: 20px;
+  padding: 20px;
+  box-sizing: border-box;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 3%);
+}
+
+.onboarding-finish-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.onboarding-finish-title {
+  color: rgb(255 255 255 / 90%);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.onboarding-finish-subtitle {
+  color: rgb(255 255 255 / 34%);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.onboarding-enter-icon {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 32px;
+}
+
+.onboarding-enter-icon img {
+  display: block;
+  width: 20px;
+  height: 20px;
+}
+
+.integration-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 26px;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 10px;
+}
+
+.integration-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.integration-title {
+  color: rgb(255 255 255 / 90%);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.integration-description {
+  color: rgb(255 255 255 / 34%);
+  font-size: 12px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+}
+
+.integration-button {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 76px;
+  height: 34px;
+  margin-left: 20px;
+  padding: 0 12px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 9px;
+  background: rgb(255 255 255 / 9%);
+  color: rgb(255 255 255 / 78%);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.integration-button:hover:not(:disabled) {
+  background: rgb(255 255 255 / 14%);
+  border-color: rgb(255 255 255 / 16%);
+}
+
+.integration-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.integration-button:disabled {
+  cursor: default;
+}
+
+.integration-button.enabled {
+  background: rgb(255 255 255 / 6%);
+  color: rgb(255 255 255 / 42%);
+}
+
+.integration-check {
+  font-size: 12px;
+  line-height: 1;
+}
+
+.startup-hint {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 50px;
+  width: 300px;
+  height: 80px;
+  box-sizing: border-box;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: rgba(40, 40, 40, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  color: white;
+  text-align: center;
+  z-index: 999999;
+  pointer-events: none;
+}
+
+.startup-hint-title {
+  margin-bottom: 7px;
+  font-size: 16px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+
+.startup-hint-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 12px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.startup-hint-text span {
+  opacity: 0.5;
+}
+
+/* ==========================================================================
+   ФРОНТЕНД СТИЛИ ДЛЯ ТЭГОВ (ПО МАКЕТУ)
+   ========================================================================== */
+.tag-container {
+  position: absolute;
+  top: 11px;
+  right: 11px;
+  z-index: 5;
+  width: 10px;
+    height: 10px;
+  gap: 8px;
+}
+
+.tag-trigger {
+    position: absolute;
+      top: 0;
+      left: 0;
+  width: 10px;
+  height: 10px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 200ms ease, transform 150ms ease, background 150ms ease;
+}
+
+.tag-trigger:hover {
+  transform: scale(1.2);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.card:hover .tag-trigger,
+.card:focus-within .tag-trigger {
+  opacity: 1;
+}
+
+.tag-trigger.has-tag {
+  opacity: 1 !important;
+}
+
+.tag-palette-menu {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 112px; /* Уменьшили ширину панели (было 136px) */
+  height: 112px;
+  padding: 7px 8px 8px 8px;
+  border-radius: 12px;
+  /* Плотный темный фон вместо матового стекла */
+    background: rgba(35, 35, 35, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    /* Чуть усиливаем тень, чтобы приподнять меню над текстом */
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.5),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  align-items: center; /* Центрируем всё по горизонтали */
+    justify-content: space-between; /* Равномерно распределяем верх, линию и низ */
+  z-index: 999;
+}
+
+.menu-tags-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 10px);
+  justify-content: flex-end; /* Прижимаем сетку вправо, чтобы верхняя правая точка идеально легла на триггер */
+  gap: 10px 18px; /* Фиксированное аккуратное расстояние между точками */
+  margin-bottom: 6px;
+}
+
+.palette-dot {
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  position: relative;
+  transition: transform 150ms ease, filter 150ms ease;
+}
+
+.palette-dot.gray.is-cancel-mode {
+  position: relative;
+  background-color: transparent !important;
+  border: 2px solid #AAAAAA !important;
+  box-sizing: border-box;
+}
+
+.palette-dot.gray.is-cancel-mode::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: #AAAAAA;
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+
+.palette-dot.gray.is-cancel-mode::after {
+  display: none !important;
+}
+
+.palette-dot:hover {
+  transform: scale(1.2);
+  filter: brightness(1.15);
+}
+
+.palette-dot.selected::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 4px;
+  height: 4px;
+  background: #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* 3. Полоса-разделитель */
+.menu-divider {
+  width: 75%; /* Делаем короче, чтобы визуально центрировать */
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0;
+}
+
+/* 4. Сетка нижних действий */
+.menu-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 2px;
+}
+
+.menu-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 4px; /* Уменьшили боковые отступы, чтобы длинное слово влезло */
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  transition: background 0.15s ease, color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1); /* Делаем текст белым при наведении */
+}
+
+/* ==========================================================================
+   АКТИВНОЕ СОСТОЯНИЕ КНОПКИ В МЕНЮ (ПОДСВЕТКА)
+   ========================================================================== */
+.menu-action-btn.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.menu-action-btn.is-active:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-icon svg,
+.action-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.action-text {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+/* ==========================================================================
+   ЭФФЕКТ СПОЙЛЕРА (TELEGRAM STYLE)
+   ========================================================================== */
+.spoiler-overlay {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 3;
+  background: rgba(0, 0, 0, 0.25);
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+/* ==========================================================================
+   СКУРЫТИЕ ЭЛЕМЕНТОВ УПРАВЛЕНИЯ ПРИ АКТИВНОМ СПОЙЛЕРЕ
+   ========================================================================== */
+
+/* Скрываем крестик удаления, иконку ресайза и выбор тега */
+.card:has(.spoiler-overlay.active) .delete-card,
+.card:has(.spoiler-overlay.active) .resize-handle,
+.card:has(.spoiler-overlay.active) .tag-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* На всякий случай отключаем изменение фона самой карточки при ховере,
+   пока она под спойлером */
+.card:has(.spoiler-overlay.active):hover {
+  background: rgba(0, 0, 0, 0.30) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Слой 1: Мелкие частицы, плывут медленно по диагонали */
+.spoiler-overlay::before {
+  content: '';
+  position: absolute;
+  /* Делаем слой больше карточки, чтобы при движении не было пустых краев */
+  top: -150px; left: -150px; right: -150px; bottom: -150px;
+  pointer-events: none;
+  
+  /* Рисуем "точки" с помощью градиентов */
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 50px 70px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 90px 20px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2.5px 2.5px at 140px 90px, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 170px 40px, rgba(255, 255, 255, 0.7), transparent);
+  background-size: 120px 120px;
+  
+  animation: floatDust1 15s linear infinite;
+}
+
+/* Слой 2: Чуть крупнее, плывут быстрее в другую сторону (эффект параллакса) */
+.spoiler-overlay::after {
+  content: '';
+  position: absolute;
+  top: -150px; left: -150px; right: -150px; bottom: -150px;
+  pointer-events: none;
+  
+  background-image:
+    radial-gradient(1px 1px at 10px 80px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 60px 10px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 110px 110px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(2px 2px at 180px 60px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 150px 150px;
+  
+  animation: floatDust2 20s linear infinite;
+  opacity: 0.6;
+}
+
+.spoiler-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.spoiler-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Плавная анимация, используем transform для 60FPS без нагрузки на CPU */
+@keyframes floatDust1 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-120px, -120px); }
+}
+
+@keyframes floatDust2 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(150px, -150px); }
+}
+
+.locker-icon-wrapper img {
+    opacity: 0.7;
+}
+
+@keyframes fadeInLock {
+    from {
+        opacity: 0;
+        transform: scale(0.8);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}

@@ -12,4 +12,8 @@ export interface Card {
   y: number;
   width: number;
   height: number;
+  tagColor?: string;
+  isSpoiler?: boolean;
+  isSpoilerRevealed?: boolean;
+  isLocked?: boolean;
 }
