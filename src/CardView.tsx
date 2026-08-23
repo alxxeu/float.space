@@ -12,8 +12,6 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { createPortal } from "react-dom";
 
 import spoilerIcon from "../src/assets/spoiler.svg";
-import shareIcon from "../src/assets/share.svg";
-import saveIcon from "../src/assets/saveas.svg";
 import copyIcon from "../src/assets/copy.svg";
 
 const MIN_CARD_SIZE = 120;
@@ -22,16 +20,15 @@ const TOP_CREATION_LIMIT = 73;
 const CANVAS_SIDE_PADDING = 24;
 const DELETE_HOLD_TIME = 400;
 
-// 8 официальных системных цветов macOS (вынесено из компонента)
 const availableColors = [
-    { name: "red", hex: "#ff3b30" },
-    { name: "orange", hex: "#ff9500" },
-    { name: "yellow", hex: "#ffcc00" },
+    { name: "red", hex: "#FF383C" },
+    { name: "orange", hex: "#FF8D28" },
+    { name: "yellow", hex: "#FFCC00" },
     { name: "gray", hex: "#8e8e93" },
-    { name: "green", hex: "#34c759" },
-    { name: "blue", hex: "#007aff" },
-    { name: "purple", hex: "#af52de" },
-    { name: "pink", hex: "#ff2d55" }
+    { name: "green", hex: "#34C759" },
+    { name: "blue", hex: "#0088FF" },
+    { name: "purple", hex: "#6155F5" },
+    { name: "pink", hex: "#CB30E0" }
 ];
 
 function snapCardSize(value: number) {
@@ -183,6 +180,7 @@ export function CardView({
     
     const [isActive, setIsActive] = useState(false);
     const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+    const [isSpoilerRevealed, setIsSpoilerRevealed] = useState(false);
     
     const paletteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const deleteTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -235,31 +233,24 @@ export function CardView({
         }
     };
     
-    const triggerRef = useRef<HTMLButtonElement>(null);
     const [menuCoords, setMenuCoords] = useState({ top: 0, left: 0 });
 
     const handleOpenPalette = (event: React.MouseEvent) => {
-          event.stopPropagation();
-        // event.currentTarget — это сама кнопка, по которой мы кликнули.
-              // Она никогда не бывает null в момент клика.
-              const target = event.currentTarget as HTMLElement;
-              const rect = target.getBoundingClientRect();
-              
-              const dotCenterX = rect.left + rect.width / 2;
-              const dotCenterY = rect.top + rect.height / 2;
-
-            setMenuCoords({
-              // Топ: центр точки минус 13px (плюс скролл, если есть)
-              top: dotCenterY - 13 + window.scrollY,
-              
-              // Лево: центр точки минус 99px (ширина меню 112px минус те самые 13px)
-              left: dotCenterX - 99 + window.scrollX,
-            });
+        event.stopPropagation();
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
         
-          setIsPaletteOpen(!isPaletteOpen);
-        };
+        const dotCenterX = rect.left + rect.width / 2;
+        const dotCenterY = rect.top + rect.height / 2;
 
-    // Закрываем меню при скролле страницы, чтобы оно не "уезжало" от карточки
+        setMenuCoords({
+            top: dotCenterY - 13 + window.scrollY,
+            left: dotCenterX - 99 + window.scrollX,
+        });
+    
+        setIsPaletteOpen(!isPaletteOpen);
+    };
+
     useEffect(() => {
       if (isPaletteOpen) {
         const handleScroll = () => setIsPaletteOpen(false);
@@ -278,32 +269,44 @@ export function CardView({
         };
     }, []);
 
+    // Автофокус при создании
     useEffect(() => {
-      const element = textareaRef.current;
-      if (!element) return;
+        const element = textareaRef.current;
+        if (!element) return;
 
-      element.innerHTML = card.text || "";
+        element.innerHTML = card.text || "";
 
-      if (!autoFocus) return;
+        if (!autoFocus) return;
 
-      const frame = requestAnimationFrame(() => {
-        const currentElement = textareaRef.current;
-        if (!currentElement) return;
+        const frame = requestAnimationFrame(() => {
+            const currentElement = textareaRef.current;
+            if (!currentElement) return;
 
-        currentElement.focus();
-        const selection = window.getSelection();
-        const range = document.createRange();
+            currentElement.focus();
+            const selection = window.getSelection();
+            const range = document.createRange();
 
-        range.selectNodeContents(currentElement);
-        range.collapse(false);
-        selection?.removeAllRanges();
-        selection?.addRange(range);
+            range.selectNodeContents(currentElement);
+            range.collapse(false);
+            selection?.removeAllRanges();
+            selection?.addRange(range);
 
-        setFocusedCardId(card.id);
-      });
+            setFocusedCardId(card.id);
+        });
 
-      return () => cancelAnimationFrame(frame);
+        return () => cancelAnimationFrame(frame);
     }, [card.id, autoFocus, setFocusedCardId]);
+
+    // Таймер возврата спойлера в закрытое состояние (3 секунды)
+    useEffect(() => {
+        if (card.isSpoiler && isSpoilerRevealed && focusedCardId !== card.id) {
+            const timer = setTimeout(() => {
+                setIsSpoilerRevealed(false);
+            }, 3000);
+
+            return () => clearTimeout(timer);
+        }
+    }, [card.isSpoiler, isSpoilerRevealed, focusedCardId, card.id]);
 
     function begin(event: React.PointerEvent, mode: "move" | "resize") {
         event.preventDefault();
@@ -525,6 +528,26 @@ export function CardView({
             }}
         >
             <div className="card-background" />
+            
+            {card.isSpoiler && (
+                <div
+                    className={`spoiler-overlay ${!isSpoilerRevealed ? "active" : "hidden"}`}
+                    onPointerDown={(e) => {
+                        if (!isSpoilerRevealed) {
+                            e.stopPropagation();
+                        }
+                    }}
+                    onClick={(e) => {
+                        if (!isSpoilerRevealed) {
+                            e.stopPropagation();
+                            setIsSpoilerRevealed(true);
+                            setFocusedCardId(card.id);
+                            onActivate();
+                        }
+                    }}
+                />
+            )}
+            
             <div
                 className="card-handle"
                 aria-label="Move card"
@@ -541,6 +564,11 @@ export function CardView({
                 suppressContentEditableWarning
                 spellCheck={false}
                 aria-label="Card text"
+                style={{
+                    opacity: card.isSpoiler && !isSpoilerRevealed ? 0 : 1,
+                    pointerEvents: card.isSpoiler && !isSpoilerRevealed ? "none" : "auto",
+                    transition: "opacity 0.3s ease"
+                }}
                 onFocus={handleFocus}
                 onBlur={handleBlur}
                 onPaste={(event) => {
@@ -720,7 +748,6 @@ export function CardView({
                                                  <div className="menu-tags-grid">
                                                    {availableColors.map((color) => {
                                                      const isGray = color.name === "gray";
-                                                     // Всегда делаем серую точку в режиме крестика (отмены)
                                                      const isCancelMode = isGray;
 
                                                      return (
@@ -742,12 +769,24 @@ export function CardView({
                                   <div className="menu-divider" />
 
                                   <div className="menu-actions-grid">
-                                    <button className="menu-action-btn" onClick={(e) => { e.stopPropagation(); console.log("Spoiler triggered"); }}>
-                                      <span className="action-icon">
-                                        <img src={spoilerIcon} alt="Spoiler" width="16" height="16" />
-                                      </span>
-                                      <span className="action-text">Spoiler</span>
-                                    </button>
+                                                 
+                                                 <button
+                                                   className={`menu-action-btn ${card.isSpoiler ? "is-active" : ""}`}
+                                                   onClick={(e) => {
+                                                     e.stopPropagation();
+                                                     onChange({
+                                                       ...card,
+                                                       isSpoiler: !card.isSpoiler
+                                                     }, true);
+                                                     setIsSpoilerRevealed(false);
+                                                     setIsPaletteOpen(false);
+                                                   }}
+                                                 >
+                                                   <span className="action-icon">
+                                                     <img src={spoilerIcon} alt="Spoiler" width="16" height="16" />
+                                                   </span>
+                                                   <span className="action-text">Spoiler</span>
+                                                 </button>
 
                                     <button className="menu-action-btn" onClick={(e) => {
                                       e.stopPropagation();

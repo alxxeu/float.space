@@ -70,7 +70,7 @@ button, input, textarea {
 .card:hover {
   background: rgba(0, 0, 0, 0.40);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.25);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.25),
   inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.5),
   inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
 }
@@ -906,6 +906,21 @@ button, input, textarea {
   color: rgba(255, 255, 255, 1); /* Делаем текст белым при наведении */
 }
 
+/* ==========================================================================
+   АКТИВНОЕ СОСТОЯНИЕ КНОПКИ В МЕНЮ (ПОДСВЕТКА)
+   ========================================================================== */
+.menu-action-btn.is-active {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 3px rgba(255, 255, 255, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.menu-action-btn.is-active:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
 .action-icon {
   display: flex;
   align-items: center;
@@ -921,4 +936,98 @@ button, input, textarea {
 .action-text {
   font-size: 10px;
   font-weight: 500;
+}
+
+/* ==========================================================================
+   ЭФФЕКТ СПОЙЛЕРА (TELEGRAM STYLE)
+   ========================================================================== */
+.spoiler-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  z-index: 3;
+  background: rgba(0, 0, 0, 0.25);
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+   СКУРЫТИЕ ЭЛЕМЕНТОВ УПРАВЛЕНИЯ ПРИ АКТИВНОМ СПОЙЛЕРЕ
+   ========================================================================== */
+
+/* Скрываем крестик удаления, иконку ресайза и выбор тега */
+.card:has(.spoiler-overlay.active) .delete-card,
+.card:has(.spoiler-overlay.active) .resize-handle,
+.card:has(.spoiler-overlay.active) .tag-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+}
+
+/* На всякий случай отключаем изменение фона самой карточки при ховере,
+   пока она под спойлером */
+.card:has(.spoiler-overlay.active):hover {
+  background: rgba(0, 0, 0, 0.30) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Слой 1: Мелкие частицы, плывут медленно по диагонали */
+.spoiler-overlay::before {
+  content: '';
+  position: absolute;
+  /* Делаем слой больше карточки, чтобы при движении не было пустых краев */
+  top: -150px; left: -150px; right: -150px; bottom: -150px;
+  pointer-events: none;
+  
+  /* Рисуем "точки" с помощью градиентов */
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(2px 2px at 50px 70px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1px 1px at 90px 20px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2.5px 2.5px at 140px 90px, rgba(255, 255, 255, 0.4), transparent),
+    radial-gradient(1.5px 1.5px at 170px 40px, rgba(255, 255, 255, 0.7), transparent);
+  background-size: 120px 120px;
+  
+  animation: floatDust1 15s linear infinite;
+}
+
+/* Слой 2: Чуть крупнее, плывут быстрее в другую сторону (эффект параллакса) */
+.spoiler-overlay::after {
+  content: '';
+  position: absolute;
+  top: -150px; left: -150px; right: -150px; bottom: -150px;
+  pointer-events: none;
+  
+  background-image:
+    radial-gradient(1px 1px at 10px 80px, rgba(255, 255, 255, 0.9), transparent),
+    radial-gradient(2px 2px at 60px 10px, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.5px 1.5px at 110px 110px, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(2px 2px at 180px 60px, rgba(255, 255, 255, 0.6), transparent);
+  background-size: 150px 150px;
+  
+  animation: floatDust2 20s linear infinite;
+  opacity: 0.6;
+}
+
+.spoiler-overlay.active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.spoiler-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Плавная анимация, используем transform для 60FPS без нагрузки на CPU */
+@keyframes floatDust1 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(-120px, -120px); }
+}
+
+@keyframes floatDust2 {
+  0% { transform: translate(0, 0); }
+  100% { transform: translate(150px, -150px); }
 }
