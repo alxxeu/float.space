@@ -1,4 +1,4 @@
-#Floatspace
+# Floatspace
 
 A spatial workspace for thinking and working — directly on your Mac desktop.
 
@@ -8,7 +8,27 @@ Instead of moving between notes, messengers, whiteboards, and documents, Floatsp
 
 Capture. Organize. Think. Create.
 
-#Why Floatspace?
+## ⚠️ Test version — macOS security warning
+
+Floatspace is currently distributed as a test / early public version and is not yet signed with an Apple Developer ID certificate.
+
+Because of this, macOS Gatekeeper may show a warning when you try to open the application, such as:
+
+**“Apple cannot check it for malicious software.”**
+
+or prevent the application from opening normally.
+
+This does not necessarily mean that the application is damaged or malicious. It means that the current build has not yet gone through Apple's standard Developer ID signing and notarization process.
+
+We are currently distributing Floatspace directly for early testing and feedback.
+
+### Before installing
+
+Only run the application if you downloaded it from the official Floatspace repository or release source and trust the build.
+
+Once the project moves to a signed and notarized distribution, these warnings should no longer appear for normal installations.
+
+## Why Floatspace?
 
 Most information is still organized linearly: documents, folders, lists, and pages.
 
@@ -22,80 +42,80 @@ Cards can be freely positioned, resized, grouped, and arranged into visual struc
 
 Floatspace sits somewhere between:
 
-Notes × Whiteboard × Desktop
+**Notes × Whiteboard × Desktop**
 
 but is designed around one idea:
 
-Your desktop should be a place where your thoughts live.
+**Your desktop should be a place where your thoughts live.**
 
-#Core features
+## Core features
 
-#Spatial cards
+### Spatial cards
 
 Create notes directly on your desktop.
 
 Move and resize cards freely and arrange information spatially instead of keeping everything in a linear list.
 
-#Instant capture
+### Instant capture
 
 Save something the moment you encounter it:
 
-ideas
-links
-references
-phone numbers
-tasks
-questions
-notes
-anything worth keeping
+- ideas
+- links
+- references
+- phone numbers
+- tasks
+- questions
+- notes
+- anything worth keeping
 
-The goal is simple: see it → capture it → keep working.
+The goal is simple: **see it → capture it → keep working.**
 
-#Spaces
+### Spaces
 
 Create up to 8 independent Spaces and switch between them instantly with:
 
-⌥2 → ⌥3 → ⌥4 → ... → ⌥9
+**⌥2 → ⌥3 → ⌥4 → ... → ⌥9**
 
 Each Space keeps its own cards and visual context.
 
-#Desktop-native workflow
+### Desktop-native workflow
 
 Floatspace lives directly on the macOS desktop instead of behaving like another traditional window.
 
 The workspace is always there when you need it.
 
-#Spatial organization
+### Spatial organization
 
 Cards can be arranged into visual groups and structures.
 
 The position of information becomes part of the context.
 
-#Example use cases
+## Example use cases
 
-#Projects
+### Projects
 Keep ideas, decisions, references, and tasks in one visual space.
 
-#Research
+### Research
 Collect sources, observations, questions, and notes without breaking your context.
 
-#Brainstorming
+### Brainstorming
 Turn scattered thoughts into visual structures.
 
-#Creative work
+### Creative work
 Build concept spaces around a project, idea, or piece of work.
 
-#Everyday capture
+### Everyday capture
 Save anything you might otherwise lose in a browser tab, messenger, or random note.
 
-#Screenshots
+## Screenshots
 <img width="1800" height="1169" alt="image" src="https://github.com/user-attachments/assets/39653880-cdeb-4623-bf31-668e71da9df5" />
 
-#The project is currently focused on macOS.
+### The project is currently focused on macOS.
 
-#Project status
+## Project status
 
-MVP — first public version
+**MVP — first public version**
 
 The current version is a usable MVP intended for early distribution, testing, and feedback.
 
@@ -103,7 +123,7 @@ The core spatial workspace, cards, Spaces, desktop integration, onboarding, and 
 
 Floatspace is still actively evolving, and the interface and interaction model may change as the product is tested with real users.
 
-#Roadmap
+## Roadmap
 
 Some of the areas being explored:
 
@@ -116,26 +136,27 @@ Additional ways to work with collected information
 
 The roadmap is intentionally flexible and driven by real usage.
 
-#Development
+## Development
 
-#Clone the repository:
+### Clone the repository:
 
-git clone https://github.com/YOUR_USERNAME/floatspace.git
-cd floatspace
+git clone https://github.com/alxxeu/float.space.git
 
-#Install dependencies:
+cd floatspace 
+
+### Install dependencies:
 
 npm install
 
-Run the development version:
+### Run the development version:
 
 npm run tauri dev
 
-#Build the application:
+### Build the application:
 
 npm run tauri build
 
-#Feedback
+## Feedback
 
 Floatspace is currently in its early public stage.
 
