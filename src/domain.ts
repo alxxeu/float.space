@@ -13,4 +13,6 @@ export interface Card {
   width: number;
   height: number;
   tagColor?: string;
+  isSpoiler?: boolean;
+  isSpoilerRevealed?: boolean;
 }

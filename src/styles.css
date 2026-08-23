@@ -48,47 +48,36 @@ button, input, textarea {
   user-select: text;
   -webkit-user-select: text;
   display: flex;
-  flex-direction: column; /* Гарантирует правильную структуру слоев */
+  flex-direction: column;
   min-width: 120px;
   min-height: 120px;
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
   background: rgba(0, 0, 0, 0.30);
-  
-  /* Объёмный блик и тень нативного Liquid Glass */
   box-shadow:
-    0 8px 32px 0 rgba(0, 0, 0, 0.15),                 /* Внешняя тень */
-    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.3),       /* Блик по верхнему краю */
-    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);              /* Мягкое затемнение снизу */
-  
-  /* Фиксируем блюр на одном значении. При ховере меняется только фон,
-     что убирает рывки рендеринга в WebKit */
+    0 8px 32px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  
-  /* БЫЛО: overflow: hidden (срезало мышь с ресайза). ТЕПЕРЬ: авто-скрытие только для текста */
   overflow: hidden;
-  
-  /* Исправлено: удалена лишняя запятая, интерполяция работает идеально */
   transition:
     background 400ms ease,
     border-color 400ms ease,
     box-shadow 400ms ease;
 }
 
-/* Мягкий и глубокий Hover эффект */
 .card:hover {
   background: rgba(0, 0, 0, 0.40);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.25);
-  inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.5),       /* Блик по верхнему краю */
-  inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);              /* Мягкое затемнение снизу */
+  inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.5),
+  inset 0 -1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 
-/* Состояние активного фокуса */
 .card.card-focused {
   background: rgba(0, 0, 0, 0.45);
-  border-color: rgba(255, 255, 255, 0.1.5);
+  border-color: rgba(255, 255, 255, 0.15); /* Исправлена опечатка в альфа-канале */
   box-shadow:
     0 16px 40px 0 rgba(0, 0, 0, 0.35),
     inset 0 0.5px 1px 0 rgba(255, 255, 255, 0.4);
@@ -125,19 +114,16 @@ button, input, textarea {
   font-size: 15px;
   line-height: 1.5;
   caret-color: rgb(255 255 255 / 80%);
-  border-radius: 16px; /* Закругляем внутренний скролл-контейнер */
+  border-radius: 16px;
   position: relative;
   z-index: 2;
-
--webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
+  mask-image: linear-gradient(to bottom, #000 82%, transparent 100%);
 }
 
-/* Скрываем полосу прокрутки WebKit, чтобы не ломать визуал */
 .card-textarea::-webkit-scrollbar {
-width: 0px;
-background: transparent;
-}
+  width: 0px;
+  background: transparent;
 }
 
 .card-textarea p,
@@ -146,9 +132,8 @@ background: transparent;
   padding: 0;
 }
 
-/* Ссылки внутри карточек */
 .card-textarea a {
-  color: #007aff; /* Дефолтный нативный синий цвет Apple */
+  color: #007aff;
   text-decoration: underline;
   cursor: pointer;
   transition: opacity 0.15s ease;
@@ -158,7 +143,6 @@ background: transparent;
   opacity: 0.75;
 }
 
-/* Разделительная линия из тире (наш <hr>) */
 .card-textarea hr.card-divider {
   border: none;
   border-top: 1px solid rgba(128, 128, 128, 0.3);
@@ -167,19 +151,18 @@ background: transparent;
   user-select: none;
 }
 
-
 /* ==========================================================================
    ИСПРАВЛЕНИЕ ИКОНКИ РАСТЯЖЕНИЯ (HITBOX)
    ========================================================================== */
 .resize-handle {
   position: absolute;
   right: 0;
-   bottom: 0;
-   width: 18px;
-   height: 18px;
+  bottom: 0;
+  width: 18px;
+  height: 18px;
   cursor: nwse-resize !important;
   opacity: 0;
-  z-index: 999; /* Выталкиваем строго поверх скроллбаров и текста */
+  z-index: 999;
   background: transparent;
   transition: opacity 200ms ease;
 }
@@ -761,7 +744,6 @@ background: transparent;
   opacity: 0.5;
 }
 
-
 /* ==========================================================================
    ФРОНТЕНД СТИЛИ ДЛЯ ТЭГОВ (ПО МАКЕТУ)
    ========================================================================== */
@@ -770,19 +752,21 @@ background: transparent;
   top: 11px;
   right: 11px;
   z-index: 5;
-  display: flex;
-  align-items: center;
+  width: 10px;
+    height: 10px;
   gap: 8px;
 }
 
-/* Кнопка-триггер (круглая точка в углу) */
 .tag-trigger {
+    position: absolute;
+      top: 0;
+      left: 0;
   width: 10px;
   height: 10px;
   padding: 0;
   border: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1); /* Серая нейтральная точка в покое на ховере */
+  background: rgba(255, 255, 255, 0.1);
   cursor: pointer;
   opacity: 0;
   transition: opacity 200ms ease, transform 150ms ease, background 150ms ease;
@@ -793,43 +777,49 @@ background: transparent;
   background: rgba(255, 255, 255, 0.45);
 }
 
-/* Показываем точку при наведении на саму карточку */
 .card:hover .tag-trigger,
 .card:focus-within .tag-trigger {
   opacity: 1;
 }
 
-/* Если тэг выбран — точка горит цветом ВСЕГДА (даже когда мышь ушла с карточки) */
 .tag-trigger.has-tag {
   opacity: 1 !important;
 }
 
-/* Всплывающая Liquid Glass панелька (теперь 4х2) */
-.tag-palette {
-  /* Переключаем на Grid для формирования двух рядов по 4 точки */
-  display: grid;
-  grid-template-columns: repeat(4, 14px); /* 4 колонки строго под размер точек */
-  gap: 8px; /* Расстояние между точками во все стороны */
-  
-  padding: 8px;
-  border-radius: 12px; /* Чуть уменьшили скругление, так как форма стала более квадратной */
-  background: rgba(10, 10, 10, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 6px 20px rgba(0, 0, 0, 0.35),
-    inset 0 0.5px 0 rgba(255, 255, 255, 0.2);
-
-  /* Позиционируем так, чтобы левый верхний угол палитры (где серая точка)
-     вставал ровно поверх триггера карточки */
+.tag-palette-menu {
   position: absolute;
-  top: -8px;  /* Компенсируем паддинг палитры */
-  right: -8px; /* Компенсируем паддинг палитры, чтобы угловая точка совпала */
+  top: -8px;
+  right: -8px;
+  width: 112px; /* Уменьшили ширину панели (было 136px) */
+  height: 112px;
+  padding: 7px 8px 8px 8px;
+  border-radius: 12px;
+  /* Плотный темный фон вместо матового стекла */
+    background: rgba(35, 35, 35, 0.98);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    /* Чуть усиливаем тень, чтобы приподнять меню над текстом */
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.5),
+      inset 0 0.5px 0 rgba(255, 255, 255, 0.15);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  align-items: center; /* Центрируем всё по горизонтали */
+    justify-content: space-between; /* Равномерно распределяем верх, линию и низ */
+  z-index: 999;
 }
 
-/* Цветные точки внутри палитры */
+.menu-tags-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 10px);
+  justify-content: flex-end; /* Прижимаем сетку вправо, чтобы верхняя правая точка идеально легла на триггер */
+  gap: 10px 18px; /* Фиксированное аккуратное расстояние между точками */
+  margin-bottom: 6px;
+}
+
 .palette-dot {
-    width: 12px;
-     height: 12px;
+  width: 12px;
+  height: 12px;
   padding: 0;
   border: none;
   border-radius: 50%;
@@ -838,58 +828,97 @@ background: transparent;
   transition: transform 150ms ease, filter 150ms ease;
 }
 
-/* ЭФФЕКТ ДЛЯ СЕРОЙ ТОЧКИ: ПРЕВРАЩАЕМ В ЗНАК ОТМЕНЫ */
-/* Если у карточки выбран любой цвет (card.tagColor существует),
-   мы трансформируем серую точку в палитре в перечеркнутый кружок */
-.card-focused .palette-dot.gray,
-.card:hover .palette-dot.gray {
+.palette-dot.gray.is-cancel-mode {
   position: relative;
   background-color: transparent !important;
   border: 2px solid #AAAAAA !important;
   box-sizing: border-box;
 }
 
-/* Рисуем диагональную линию внутри серой точки */
-.card-focused .palette-dot.gray::before,
-.card:hover .palette-dot.gray::before {
+.palette-dot.gray.is-cancel-mode::before {
   content: "";
   position: absolute;
   top: 50%;
   left: 50%;
   width: 100%;
-  height: 2px; /* Тонкая линия перечеркивания */
+  height: 2px;
   background: #AAAAAA;
-  /* Поворачиваем строго по диагонали и центрируем */
   transform: translate(-50%, -50%) rotate(45deg);
   pointer-events: none;
 }
 
-/* Скрываем стандартный белый маркер `.selected` (точку в центре) конкретно для серой кнопки,
-   так как знак перечеркивания сам по себе является индикатором действия */
-.palette-dot.gray.selected::after {
+.palette-dot.gray.is-cancel-mode::after {
   display: none !important;
 }
-
 
 .palette-dot:hover {
   transform: scale(1.2);
   filter: brightness(1.15);
 }
 
-/* Белый маркер активного цвета в центре */
 .palette-dot.selected::after {
   content: "";
   position: absolute;
   inset: 0;
   margin: auto;
-  width: 4px; /* Было 3px */
-  height: 4px; /* Было 3px */
+  width: 4px;
+  height: 4px;
   background: #ffffff;
   border-radius: 50%;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
+/* 3. Полоса-разделитель */
+.menu-divider {
+  width: 75%; /* Делаем короче, чтобы визуально центрировать */
+  height: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0;
+}
 
-.card-focused, .card {
-  position: absolute !important;
+/* 4. Сетка нижних действий */
+.menu-actions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: 2px;
+}
+
+.menu-action-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 6px 4px; /* Уменьшили боковые отступы, чтобы длинное слово влезло */
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  transition: background 0.15s ease, color 0.15s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.menu-action-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 1); /* Делаем текст белым при наведении */
+}
+
+.action-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-icon svg,
+.action-icon img {
+  width: 16px;
+  height: 16px;
+}
+
+.action-text {
+  font-size: 10px;
+  font-weight: 500;
 }
