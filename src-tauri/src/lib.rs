@@ -185,6 +185,25 @@ fn activate_floatspace() -> Result<(), String> {
     native_desktop::activate_app().map_err(|error| error.to_string())
 }
 
+#[cfg(target_os = "macos")]
+extern "C" {
+    fn authenticate_user(reason: *const std::ffi::c_char) -> bool;
+}
+
+#[tauri::command]
+fn authenticate_card() -> Result<bool, String> {
+    #[cfg(target_os = "macos")]
+    {
+        let reason = std::ffi::CString::new("Unlock secret card in Floatspace").unwrap();
+        let success = unsafe { authenticate_user(reason.as_ptr()) };
+        Ok(success)
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Ok(true) // Фолбек для других ОС
+    }
+}
+
 pub fn run() {
     let shortcut_plugin = tauri_plugin_global_shortcut::Builder::new()
         .with_shortcuts([
@@ -463,7 +482,8 @@ pub fn run() {
         take_pending_spotlight_card,
         activate_floatspace,
         bring_floatspace_to_front,
-        quit_app
+        quit_app,
+        authenticate_card
     ])
     .run(tauri::generate_context!())
     .expect("error while running Floatspace");

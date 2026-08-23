@@ -10,9 +10,11 @@ import {
 import type { Card } from "./domain";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { createPortal } from "react-dom";
+import { invoke } from "@tauri-apps/api/core";
 
 import spoilerIcon from "../src/assets/spoiler.svg";
-import copyIcon from "../src/assets/copy.svg";
+import lockIcon from "../src/assets/lock.svg";
+import lockerIcon from "../src/assets/locker.svg";
 
 const MIN_CARD_SIZE = 120;
 const CARD_SIZE_STEP = 60;
@@ -531,21 +533,42 @@ export function CardView({
             
             {card.isSpoiler && (
                 <div
-                    className={`spoiler-overlay ${!isSpoilerRevealed ? "active" : "hidden"}`}
+                    className={`spoiler-overlay ${!isSpoilerRevealed ? "active" : "hidden"} ${card.isLocked ? "locked" : ""}`}
                     onPointerDown={(e) => {
                         if (!isSpoilerRevealed) {
                             e.stopPropagation();
                         }
                     }}
-                    onClick={(e) => {
+                    onClick={async (e) => {
                         if (!isSpoilerRevealed) {
                             e.stopPropagation();
-                            setIsSpoilerRevealed(true);
-                            setFocusedCardId(card.id);
-                            onActivate();
+                            
+                            if (card.isLocked) {
+                                try {
+                                    const success = await invoke<boolean>("authenticate_card");
+                                    if (success) {
+                                        setIsSpoilerRevealed(true);
+                                        setFocusedCardId(card.id);
+                                        onActivate();
+                                    }
+                                } catch (error) {
+                                    console.log("Touch ID canceled or failed:", error);
+                                }
+                            } else {
+                                setIsSpoilerRevealed(true);
+                                setFocusedCardId(card.id);
+                                onActivate();
+                            }
                         }
                     }}
-                />
+                >
+                    {/* НОВЫЙ БЛОК: Иконка замочка по центру, если карточка залочена и еще не открыта */}
+                    {!isSpoilerRevealed && card.isLocked && (
+                        <div className="locker-icon-wrapper">
+                            <img src={lockerIcon} alt="Locker" width="32" height="32" />
+                        </div>
+                    )}
+                </div>
             )}
             
             <div
@@ -768,44 +791,52 @@ export function CardView({
 
                                   <div className="menu-divider" />
 
-                                  <div className="menu-actions-grid">
-                                                 
-                                                 <button
-                                                   className={`menu-action-btn ${card.isSpoiler ? "is-active" : ""}`}
-                                                   onClick={(e) => {
-                                                     e.stopPropagation();
-                                                     onChange({
-                                                       ...card,
-                                                       isSpoiler: !card.isSpoiler
-                                                     }, true);
-                                                     setIsSpoilerRevealed(false);
-                                                     setIsPaletteOpen(false);
-                                                   }}
-                                                 >
-                                                   <span className="action-icon">
-                                                     <img src={spoilerIcon} alt="Spoiler" width="16" height="16" />
-                                                   </span>
-                                                   <span className="action-text">Spoiler</span>
-                                                 </button>
+                                                 <div className="menu-actions-grid">
+                                                   <button
+                                                     className={`menu-action-btn ${card.isSpoiler ? "is-active" : ""}`}
+                                                     onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       onChange({
+                                                         ...card,
+                                                         isSpoiler: !card.isSpoiler
+                                                       }, true);
+                                                       setIsSpoilerRevealed(false);
+                                                       setIsPaletteOpen(false);
+                                                     }}
+                                                   >
+                                                     <span className="action-icon">
+                                                       <img src={spoilerIcon} alt="Spoiler" width="16" height="16" />
+                                                     </span>
+                                                     <span className="action-text">Spoiler</span>
+                                                   </button>
 
-                                    <button className="menu-action-btn" onClick={(e) => {
-                                      e.stopPropagation();
-                                      const plainText = textareaRef.current?.textContent || card.text;
-                                      navigator.clipboard.writeText(plainText);
-                                      setIsPaletteOpen(false);
-                                    }}>
-                                      <span className="action-icon">
-                                        <img src={copyIcon} alt="Copy" width="16" height="16" />
-                                      </span>
-                                      <span className="action-text">Copy</span>
-                                    </button>
-                                  </div>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>,
-                            document.body
-                          )}
-                        </div>
+                                                   <button
+                                                     className={`menu-action-btn ${card.isLocked ? "is-active" : ""}`}
+                                                     onClick={(e) => {
+                                                       e.stopPropagation();
+                                                       const newLockedState = !card.isLocked;
+                                                       onChange({
+                                                         ...card,
+                                                         isLocked: newLockedState,
+                                                         // Если закрываем на замок, сразу же включаем спойлер
+                                                         isSpoiler: newLockedState ? true : card.isSpoiler
+                                                       }, true);
+                                                       setIsSpoilerRevealed(false);
+                                                       setIsPaletteOpen(false);
+                                                     }}
+                                                   >
+                                                     <span className="action-icon">
+                                                       <img src={lockIcon} alt="Lock" width="16" height="16" />
+                                                     </span>
+                                                     <span className="action-text">Lock</span>
+                                                   </button>
+                                                 </div>
+                                                 </motion.div>
+                                                             )}
+                                                         </AnimatePresence>,
+                                                         document.body
+                                                     )}
+                                                 </div>
             
             <button
                 className="delete-card"

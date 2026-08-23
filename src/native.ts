@@ -70,3 +70,4 @@ export async function activateFloatspace(): Promise<void> {
 export async function bringFloatspaceToFront(): Promise<void> {
   return invoke("bring_floatspace_to_front");
 }
+

@@ -23,6 +23,7 @@ pub struct Card {
     pub(crate) height: f64,
     pub(crate) tag_color: Option<String>,
     pub(crate) is_spoiler: Option<bool>,
+    pub(crate) is_locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -89,6 +90,11 @@ impl Database {
             "ALTER TABLE cards ADD COLUMN is_spoiler INTEGER DEFAULT 0",
             []
         );
+        
+        let _ = connection.execute(
+            "ALTER TABLE cards ADD COLUMN is_locked INTEGER DEFAULT 0",
+            []
+        );
 
         let database = Self { connection };
         database.ensure_default_workspace()?;
@@ -146,7 +152,7 @@ impl Database {
 
     pub fn list_cards(&self, workspace_id: String) -> rusqlite::Result<Vec<Card>> {
         let mut statement = self.connection.prepare(
-            "SELECT id, workspace_id, text, x, y, width, height, tag_color, is_spoiler FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC"
+            "SELECT id, workspace_id, text, x, y, width, height, tag_color, is_spoiler, is_locked FROM cards WHERE workspace_id = ?1 ORDER BY created_at ASC"
         )?;
         let cards = statement
             .query_map([workspace_id], Self::card_from_row)?
@@ -166,9 +172,11 @@ impl Database {
             height: new_card.height,
             tag_color: None,
             is_spoiler: Some(false),
+            is_locked: Some(false),
         };
         self.connection.execute(
-            "INSERT INTO cards (id, workspace_id, text, x, y, width, height, tag_color, is_spoiler) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+        "INSERT INTO cards (id, workspace_id, text, x, y, width, height, tag_color, is_spoiler, is_locked)
+            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
             params![
                 card.id,
                 card.workspace_id,
@@ -178,7 +186,8 @@ impl Database {
                 card.width,
                 card.height,
                 card.tag_color,
-                0_i64,
+                card.is_spoiler.unwrap_or(false) as i64,
+                0_i64, // ?10
             ]
         )?;
         Ok(card)
@@ -187,16 +196,8 @@ impl Database {
     pub fn update_card(&self, card: Card) -> rusqlite::Result<()> {
         self.connection.execute(
             "UPDATE cards
-             SET workspace_id = ?1,
-                 text = ?2,
-                 x = ?3,
-                 y = ?4,
-                 width = ?5,
-                 height = ?6,
-                 tag_color = ?7,
-                 is_spoiler = ?8,
-                 updated_at = CURRENT_TIMESTAMP
-             WHERE id = ?9",
+                SET workspace_id = ?1, text = ?2, x = ?3, y = ?4, width = ?5, height = ?6, tag_color = ?7, is_spoiler = ?8, is_locked = ?9, updated_at = CURRENT_TIMESTAMP
+                    WHERE id = ?10",
             params![
                 card.workspace_id, // ?1
                 card.text,         // ?2
@@ -206,7 +207,8 @@ impl Database {
                 card.height,       // ?6
                 card.tag_color,    // ?7
                 card.is_spoiler.unwrap_or(false) as i64, // ?8
-                card.id,           // ?9
+                card.is_locked.unwrap_or(false) as i64, // ?9
+                card.id,                                // ?10
             ]
         )?;
         Ok(())
@@ -243,6 +245,7 @@ impl Database {
 
     fn card_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Card> {
         let is_spoiler_num: Option<i64> = row.get(8).ok();
+        let is_locked_num: Option<i64> = row.get(9).ok();
         
         Ok(Card {
             id: row.get(0)?,
@@ -254,6 +257,7 @@ impl Database {
             height: row.get(6)?,
             tag_color: row.get(7).ok(),
             is_spoiler: Some(is_spoiler_num.unwrap_or(0) != 0),
+            is_locked: Some(is_locked_num.unwrap_or(0) != 0),
         })
     }
 

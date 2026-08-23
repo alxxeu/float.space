@@ -15,4 +15,5 @@ export interface Card {
   tagColor?: string;
   isSpoiler?: boolean;
   isSpoilerRevealed?: boolean;
+  isLocked?: boolean;
 }
