@@ -51,7 +51,7 @@
       ],
 
       "macOS": {
-        "minimumSystemVersion": "26.0",
+        "minimumSystemVersion": "14.0",
         "signingIdentity": "Apple Development: alxxeu@proton.me (98WKTQM42F)",
 
         "frameworks": [
