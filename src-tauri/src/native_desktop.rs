@@ -193,7 +193,7 @@ fn apply_macos_mode<R: Runtime>(
     if let Some(content_view) = native_window.contentView() {
         let blur_view = ensure_blur_view(&content_view);
 
-            blur_view.setHidden(mode == Mode::Desktop);
+            blur_view.setHidden(mode != Mode::Workspace);
     }
 
     Ok(())

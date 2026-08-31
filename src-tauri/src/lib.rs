@@ -4,6 +4,7 @@ mod storage;
 
 use std::sync::Mutex;
 use storage::{Card, Database, NewCard, Workspace};
+use tauri::menu::{Menu, MenuItem, Submenu};
 use tauri::{Emitter, Manager, State};
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut, ShortcutState};
 
@@ -97,13 +98,34 @@ fn delete_card(id: String, state: State<'_, AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn update_workspace(id: String, name: String, state: State<'_, AppState>) -> Result<(), String> {
-    state
-        .database
-        .lock()
-        .map_err(|_| "Workspace storage is unavailable".to_string())?
-        .update_workspace(id, name)
-        .map_err(|error| error.to_string())
+fn update_workspace(
+    id: String,
+    name: String,
+    state: State<'_, AppState>,
+    app: tauri::AppHandle,
+) -> Result<(), String> {
+    let db = state.database.lock().map_err(|_| "Storage is unavailable")?;
+    
+    // Обновляем в БД
+    db.update_workspace(id.clone(), name.clone()).map_err(|e| e.to_string())?;
+    
+    // Синхронизируем с верхним меню macOS
+    if let Ok(workspaces) = db.list_workspaces() {
+        if let Some(ws) = workspaces.iter().find(|w| w.id == id) {
+            let item_id = format!("space-{}", ws.slot);
+            
+            if let Some(menu) = app.menu() {
+                if let Some(item) = menu.get(&item_id) {
+                    // Исправлено: Some вместо Ok
+                    if let Some(menu_item) = item.as_menuitem() {
+                        let _ = menu_item.set_text(name);
+                    }
+                }
+            }
+        }
+    }
+    
+    Ok(())
 }
 
 #[derive(serde::Serialize)]
@@ -312,6 +334,31 @@ pub fn run() {
         .build();
 
     tauri::Builder::default()
+       
+        .on_menu_event(|app, event| {
+            let Some(slot) = event.id().as_ref().strip_prefix("space-")
+                .and_then(|slot| slot.parse::<u8>().ok())
+            else {
+                return;
+            };
+
+            if !(2..=9).contains(&slot) {
+                return;
+            }
+
+            let Some(window) = app.get_webview_window("main") else {
+                return;
+            };
+
+            let state = app.state::<DesktopLayerState>();
+            if let Ok(mut mode) = state.mode.lock() {
+                *mode = native_desktop::Mode::Workspace;
+            }
+
+            if native_desktop::apply_mode(&window, native_desktop::Mode::Workspace).is_ok() {
+                let _ = app.emit("switch-workspace", slot);
+            }
+        })
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_deep_link::init())
@@ -422,7 +469,48 @@ pub fn run() {
             let data_dir = app.path().app_data_dir()?;
             std::fs::create_dir_all(&data_dir)?;
 
-            let database = Database::open(data_dir.join("floatspace.sqlite"))?;
+         let database = Database::open(data_dir.join("floatspace.sqlite"))?;
+
+// --- ДИНАМИЧЕСКОЕ МЕНЮ ---
+let workspaces = database.list_workspaces().unwrap_or_default();
+let menu = tauri::menu::Menu::default(app.handle())?;
+let mut space_items = Vec::new();
+
+for slot in 2..=9 {
+    // Ищем спэйс по слоту, иначе дефолтное название
+    let name = workspaces.iter()
+        .find(|w| w.slot == slot as i64) // slot в БД у тебя i64
+        .map(|w| w.name.clone())
+        .unwrap_or_else(|| format!("Space {}", slot - 1));
+
+    let id = format!("space-{}", slot);
+    let accelerator = format!("Alt+{}", slot);
+    
+    let item = tauri::menu::MenuItem::with_id(
+        app.handle(),
+        &id,
+        &name,
+        true,
+        Some(&accelerator)
+    )?;
+    
+    space_items.push(item);
+}
+
+let items_refs: Vec<&dyn tauri::menu::IsMenuItem<_>> = space_items
+    .iter()
+    .map(|i| i as &dyn tauri::menu::IsMenuItem<_>)
+    .collect();
+
+let spaces_submenu = tauri::menu::Submenu::with_items(
+    app.handle(),
+    "Spaces",
+    true,
+    &items_refs,
+)?;
+
+menu.append(&spaces_submenu)?;
+app.handle().set_menu(menu)?;
 
             #[cfg(target_os = "macos")]
             {
